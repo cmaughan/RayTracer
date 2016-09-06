@@ -45,10 +45,23 @@ Color3 TraceRay(const Vector3& rayorig, const Vector3 &raydir, const int &depth)
 		}
 	}
 
+	if (!sphere)
+	{
+		return Color3{ 0.0f, 0.0f, 0.0f };
+	}
+
+	// Where we hit
+	Vector3 phit = rayorig + raydir * tnear; 
+
+	// Normal
+    Vector3 normal = phit - sphere->center; 
+    normal = -normal.Normalize(); 
+
 	if (sphere)
 	{
-		return sphere->color;
+		return sphere->color * normal.Dot(raydir);
 	}
+
 	return Color3{ 0.0f, 0.0f, 0.0f };
 }
 
@@ -73,7 +86,10 @@ void DrawScene(Bitmap* pBitmap)
 			rayDir = rayDir.Normalize();
 
 			Color3 color = TraceRay(Vector3{ 0.0f, 0.0f, 0.0f }, rayDir, 0);
-			PutPixel(pBitmap, x, y, Color{ uint8_t(color.x * 255.0f), uint8_t(color.y * 255.0f),uint8_t(color.z * 255.0f) });
+			color = color * 255.0f;
+			color = color.Clamp(255.0f);
+			
+			PutPixel(pBitmap, x, y, Color{ uint8_t(color.x), uint8_t(color.y ),uint8_t(color.z) });
 		}
 	}
 }

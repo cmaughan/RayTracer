@@ -1,5 +1,5 @@
 #pragma once
-
+#include <cmath>
 static float DegreesToRadians(float degrees)
 {
 	return float((M_PI * degrees) / 180.0f);
@@ -11,6 +11,10 @@ struct Vector3
 	float y;
 	float z;
 
+	Vector3 operator-() const
+	{
+		return Vector3{ -x, -y, -z };
+	}
 	Vector3 operator- (const Vector3& rhs) const
 	{
 		return Vector3{ x - rhs.x, y - rhs.y, z - rhs.z };
@@ -21,6 +25,17 @@ struct Vector3
 		return Vector3{ x + rhs.x, y + rhs.y, z + rhs.z };
 	}
 
+	Vector3 operator* (const float& rhs) const
+	{
+		return Vector3{ x * rhs, y * rhs, z * rhs };
+	}
+
+	Vector3 Clamp(float max)
+	{
+		return Vector3{ x <= 255.0f ? x : 255.0f,
+						y <= 255.0f ? y : 255.0f,
+						z <= 255.0f ? z : 255.0f };
+	}
 	Vector3 Normalize()
 	{
 		float length = sqrtf((x * x) + (y * y) + (z * z));
