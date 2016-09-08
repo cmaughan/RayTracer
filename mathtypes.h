@@ -23,6 +23,7 @@ struct SceneObject
 {
     virtual const Material& GetMaterial(const vec3& pos) const = 0;
     virtual SceneObjectType GetSceneObjectType() const = 0;
+    virtual vec3 GetSurfaceNormal(const vec3& pos) const = 0;
 };
 
 struct Sphere : SceneObject
@@ -47,12 +48,17 @@ struct Sphere : SceneObject
     {
         return SceneObjectType::Sphere;
     }
+
+    virtual vec3 GetSurfaceNormal(const vec3& pos) const
+    {
+        return normalize(pos - center);
+    }
 };
 
 struct Plane : SceneObject
 {
     vec3 normal;
-    float distance;
+    vec3 origin;
     virtual SceneObjectType GetSceneObjectType() const override 
     {
         return SceneObjectType::Plane;
@@ -62,18 +68,19 @@ struct Plane : SceneObject
 struct TiledPlane : Plane
 {
     mutable Material mat;
-    TiledPlane(const vec3& n, float d)
+    TiledPlane(const vec3& o, const vec3& n)
     {
         normal = n;
-        distance = d;
+        origin = o;
         mat.opacity = 1.0f;
         mat.specular = vec3(1.0f, 1.0f, 1.0f);
     }
 
     virtual const Material& GetMaterial(const vec3& pos) const override
     {
-        int tileX = int(pos.x / .5f);
-        if (tileX & 0x1)
+        bool white = ((int(floor(pos.x / .5f) + floor(pos.y / .5f)) & 1) == 0);
+
+        if (white)
         {
             mat.albedo = vec3(1.0f, 1.0f, 1.0f);
         }
@@ -82,5 +89,10 @@ struct TiledPlane : Plane
             mat.albedo = vec3(0.0f, 0.0f, 0.0f);
         }
         return mat;
+    }
+    
+    virtual vec3 GetSurfaceNormal(const vec3& pos) const
+    {
+        return normal;
     }
 };
