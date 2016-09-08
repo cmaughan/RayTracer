@@ -1,45 +1,45 @@
-#include <cstdio>
-#include <chrono>
-#include <algorithm>
+#include "common.h"
+
 #include "writebitmap.h"
-#include "mathtypes.h"
-#include <vector>
-#include <memory>
+#include "sceneobjects.h"
+#include "camera.h"
 
-const int ImageWidth = 512;
-const int ImageHeight = 512;
+const int ImageWidth = 1024;
+const int ImageHeight = 768;
+const float FieldOfView = 60.0f;
 
-#define MAX_DEPTH 5
+#define MAX_DEPTH 6
 
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
-
-vec3 CameraPosition = vec3{ 0.0f, -3.0f, 0.0f };
-vec3 CameraLookDirection = vec3{ 0.0f, 0.0f, 1.0f };
-
-float FieldOfView = 30.0f;
+std::shared_ptr<Camera> pCamera;
 
 void InitScene()
 {
+    pCamera = std::make_shared<Camera>(vec3(0.0f, 6.0f, 6.0f),      // Where the camera is
+        vec3(0.0f, -1.0f, -1.0f),    // The point it is looking at
+        FieldOfView,                // The field of view of the 'lens'
+        ImageWidth, ImageHeight);   // The size in pixels of the view plane
+
     Material mat;
     mat.albedo = vec3(.7f, .1f, .1f);
     mat.specular = vec3(.9f, .1f, .1f);
     mat.opacity = 0.6f;
 
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-1.0f, -0.0f, -8.5f), 0.8f));
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(0.0f, 2.0f, 0.f), 2.0f));
 
     mat.albedo = vec3(0.7f, 0.0f, 0.7f);
     mat.specular = vec3(0.9f, 0.9f, 0.8f);
     mat.opacity = 0.9f;
 
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(1.0f, -0.0f, -8.5f), 0.8f));
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-2.5f, 1.0f, 2.f), 1.0f));
 
     mat.albedo = vec3(0.0f, 0.8f, 0.0f);
     mat.specular = vec3(0.1f, 0.9f, 0.0f);
     mat.opacity = 1.0f;
 
-    //sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(0.0f, -1.0f, -6.0f), 0.4f));
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(2.8f, 1.0f, 1.5f), 1.0f));
 
-    sceneObjects.push_back(std::make_shared<TiledPlane>(vec3(0.0f, -0.0f, -9.9f), normalize(vec3(0.0f, 1.0f, 1.0f))));
+    sceneObjects.push_back(std::make_shared<TiledPlane>(vec3(0.0f, 0.0f, 0.0f), normalize(vec3(0.0f, 1.0f, 0.0f))));
 }
 
 SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance)
@@ -80,7 +80,7 @@ SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance
     return nearestObject;
 }
 
-vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int &depth)
+vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 {
     const SceneObject* nearestObject = nullptr;
     float distance;
@@ -90,7 +90,6 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int &depth)
     {
         return vec3{ 0.0f, 0.0f, 0.0f };
     }
-
     vec3 pos = rayorig + (raydir * distance);
     vec3 normal = nearestObject->GetSurfaceNormal(pos);
     vec3 reflect = glm::normalize(glm::reflect(raydir, normal));
@@ -108,14 +107,13 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int &depth)
     float diffuseI = 0.0f;
     float specI = 0.0f;
 
-    // Otherwise, sample the lighting
-    // A fixed, directional light
-    vec3 lightDir = vec3{ 1.f, 0.0f, 2.0f };
-    lightDir = glm::normalize(lightDir);
+    float objectDistance;
+    auto near = FindNearestObject(pos + (reflect * 0.001f), reflect, objectDistance);
 
-    float occluderDistance;
-    if (!FindNearestObject(pos + (lightDir * 0.001f), lightDir, occluderDistance))
+    if (near)
     {
+        auto nearestPos = pos + (reflect * objectDistance);
+        if (near->GetMaterial(pos)
         vec3 diffuseColor{ 0.0f, 0.0f, 0.0f };
 
         diffuseI = dot(normal, lightDir);
@@ -138,30 +136,28 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int &depth)
             diffuseI = 0.0f;
         }
     }
-    outputColor = outputColor + ((material.albedo * diffuseI) + (material.specular * specI)) * material.opacity;
-    return outputColor;
+    outputColor += ((material.albedo * diffuseI) + (material.specular * specI)) * material.opacity;
+}
+return outputColor;
 }
 
 void DrawScene(Bitmap* pBitmap)
 {
-    float invWidth = 1.0f / float(ImageWidth);
-    float invHeight = 1.0f / float(ImageHeight);
-
-    float aspectRatio = float(ImageWidth) / float(ImageHeight);
-
-    float halfAngle = tan(glm::radians(FieldOfView) * 0.5f);
-
     for (int y = 0; y < ImageHeight; y++)
     {
         for (int x = 0; x < ImageWidth; x++)
         {
-            float xx = (2.0f * (((float)x + 0.5f) * invWidth) - 1.f) * halfAngle * aspectRatio;
-            float yy = (1.0f - 2.0f * (((float)y + 0.5f) * invHeight)) * halfAngle;
+            const int numSamples = 4;
+            vec3 color{ 0.0f, 0.0f, 0.0f };
+            static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.4f), vec2(0.2f, 0.7f) };
+            for (auto i = 0; i < numSamples; i++)
+            {
+                vec2 sample(float(x) + patterns[i].x, float(y) + patterns[i].y);
 
-            vec3 rayDir{ xx, yy, -1.0f };
-            rayDir = glm::normalize(rayDir);
-
-            vec3 color = TraceRay(vec3{ 0.0f, 0.0f, 0.0f }, rayDir, 0);
+                auto ray = pCamera->GetWorldRay(sample);
+                color += TraceRay(pCamera->position, ray, 0);
+            }
+            color *= (1.0f / numSamples);
 
             // Color might have maxed out, so clamp.
             color = color * 255.0f;

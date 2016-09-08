@@ -1,16 +1,11 @@
 #pragma once
-#include <cmath>
-#include "glm/glm/glm.hpp"
-#include "glm/glm/gtx/intersect.hpp"
-
-using vec3 = glm::vec3;
-using vec4 = glm::vec4;
 
 struct Material
 {
     vec3 albedo;        // Base color of the surface
     vec3 specular;      // Specular reflection color
     float opacity;      // How opaque the surface is
+    vec3 emissive;      // Light that the material emits
 };
 
 enum class SceneObjectType
@@ -78,7 +73,7 @@ struct TiledPlane : Plane
 
     virtual const Material& GetMaterial(const vec3& pos) const override
     {
-        bool white = ((int(floor(pos.x / .5f) + floor(pos.y / .5f)) & 1) == 0);
+        bool white = ((int(floor(pos.x) + /*floor(pos.y) +*/ floor(pos.z)) & 1) == 0);
 
         if (white)
         {
