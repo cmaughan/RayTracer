@@ -7,11 +7,14 @@
 
 const int ImageWidth = 512;
 const int ImageHeight = 512;
+ 
 #define MAX_DEPTH 1
+
 std::vector<Sphere> spheres;
 
 vec3 CameraPosition = vec3{ 0.0f, -3.0f, 0.0f };
 vec3 CameraLookDirection = vec3{ 0.0f, 0.0f, 1.0f };
+
 float FieldOfView = 30.0f;
 
 void InitScene()
@@ -19,19 +22,18 @@ void InitScene()
     spheres.push_back(Sphere{ vec3{ -1.0f, 0.0f, -7.5f }, 1.0f, vec3{0.5f, 0.0f, 0.0f},0.3f, vec3{.9f, .1f, .1f} });
     spheres.push_back(Sphere{ vec3{ 1.0f, 0.0f, -9.f }, 1.0f, vec3{0.5f, 0.0f, 0.5f}, 1.f, vec3{.9f, .1f, .8f} });
     spheres.push_back(Sphere{ vec3{ 0.0f, 1.2f, -7.5f }, 0.5f, vec3{0.0f, 0.5f, 0.0f}, .7f, vec3{.1f, .9f, .0f } });
-    //spheres.push_back(Sphere{ vec3{ 1.0f, .5f, -2.5f }, 0.5f, vec3{0.5f, 0.5f, 0.0f}, .5f });
 }
 
-vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int &depth, bool& hit)
+vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int &depth)
 {
-    const Sphere* sphere = NULL;
-    float lastDistance = INFINITY;
+    const Sphere* sphere = nullptr;
+    float lastDistance = std::numeric_limits<float>::max();
 
     // find intersection of this ray with the sphere in the scene
     for (unsigned i = 0; i < spheres.size(); ++i)
     {
         float distance;
-        if (intersectRaySphere(rayorig, normalize(raydir), spheres[i].center, spheres[i].radius * spheres[i].radius, distance))
+        if (glm::intersectRaySphere(rayorig, glm::normalize(raydir), spheres[i].center, spheres[i].radius * spheres[i].radius, distance))
         {
             if (distance < lastDistance)
             {
@@ -43,28 +45,25 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int &depth, bool& h
 
     if (!sphere)
     {
-        hit = false;
         return vec3{ 0.0f, 0.0f, 0.0f };
     }
 
     vec3 pos = rayorig + (raydir * lastDistance);
-    vec3 normal = normalize(pos - sphere->center);
-
-    hit = true;
-    vec3 reflect = normalize(glm::reflect(raydir, normal));
-    vec3 result{ 0.0f, 0.0f, 0.0f };
+    vec3 normal = glm::normalize(pos - sphere->center);
+    vec3 reflect = glm::normalize(glm::reflect(raydir, normal));
 
     vec3 outputColor{ 0.0f, 0.0f, 0.0f };
 
-    // If the object is transparent, return a reflection color
+    // If the object is transparent, get the reflection color
     if (depth < MAX_DEPTH && sphere->reflection > 0.0f)
     {
-        outputColor = TraceRay(pos + reflect/*(reflect * 0.0001f)*/, reflect, depth + 1, hit) * sphere->reflection;
+        outputColor = TraceRay(pos + reflect, reflect, depth + 1) * sphere->reflection;
     }
 
     // Otherwise, sample the lighting
+    // A fixed, directional light
     vec3 lightDir = vec3{ 1.f, .0f, 2.0f };
-    lightDir = normalize(lightDir);
+    lightDir = glm::normalize(lightDir);
 
     vec3 specColor{ 1.0f, 1.0f, 1.0f };
     vec3 diffuseColor{ 0.0f, 0.0f, 0.0f };
@@ -89,7 +88,7 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int &depth, bool& h
     {
         diffuseI = 0.0f;
     }
-    outputColor = outputColor + ( ((sphere->color * diffuseI) + (sphere->specularColor * specI)) /* (1.0f - sphere->transparency)*/) ;
+    outputColor = outputColor + ((sphere->color * diffuseI) + (sphere->specularColor * specI));
     return outputColor;
 }
 
@@ -110,10 +109,11 @@ void DrawScene(Bitmap* pBitmap)
             float yy = (1.0f - 2.0f * (((float)y + 0.5f) * invHeight)) * halfAngle;
 
             vec3 rayDir{ xx, yy, -1.0f };
-            rayDir = normalize(rayDir);
+            rayDir = glm::normalize(rayDir);
 
-            bool hit = false;
-            vec3 color = TraceRay(vec3{ 0.0f, 0.0f, 0.0f }, rayDir, 0, hit);
+            vec3 color = TraceRay(vec3{ 0.0f, 0.0f, 0.0f }, rayDir, 0);
+
+            // Color might have maxed out, so clamp.
             color = color * 255.0f;
             color = clamp(color, vec3(0.0f, 0.0f, 0.0f), vec3(255.0f, 255.0f, 255.0f));
 
