@@ -25,23 +25,18 @@ void InitScene()
 vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int &depth, bool& hit)
 {
     const Sphere* sphere = NULL;
-    float lastDistanceSquared = INFINITY;
-    vec3 pos, normal;
+    float lastDistance = INFINITY;
 
     // find intersection of this ray with the sphere in the scene
     for (unsigned i = 0; i < spheres.size(); ++i)
     {
-        vec3 intersectPos;
-        vec3 intersectNormal;
-        if (intersectRaySphere(rayorig, normalize(raydir), spheres[i].center, spheres[i].radius, intersectPos, intersectNormal))
+        float distance;
+        if (intersectRaySphere(rayorig, normalize(raydir), spheres[i].center, spheres[i].radius * spheres[i].radius, distance))
         {
-            auto d = fabs(distance(intersectPos, rayorig));
-            if (d < lastDistanceSquared)
+            if (distance < lastDistance)
             {
-                lastDistanceSquared = d;
+                lastDistance = distance;
                 sphere = &spheres[i];
-                pos = intersectPos;
-                normal = normalize(intersectNormal);
             }
         }
     }
@@ -52,18 +47,19 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int &depth, bool& h
         return vec3{ 0.0f, 0.0f, 0.0f };
     }
 
+    vec3 pos = rayorig + (raydir * lastDistance);
+    vec3 normal = normalize(pos - sphere->center);
+
     hit = true;
     vec3 reflect = normalize(glm::reflect(raydir, normal));
     vec3 result{ 0.0f, 0.0f, 0.0f };
-
-    float tiny = std::numeric_limits<float>::min();
 
     vec3 outputColor{ 0.0f, 0.0f, 0.0f };
 
     // If the object is transparent, return a reflection color
     if (depth < MAX_DEPTH && sphere->reflection > 0.0f)
     {
-        outputColor = TraceRay(pos, reflect, depth + 1, hit) * sphere->reflection;
+        outputColor = TraceRay(pos + reflect/*(reflect * 0.0001f)*/, reflect, depth + 1, hit) * sphere->reflection;
     }
 
     // Otherwise, sample the lighting
@@ -106,7 +102,6 @@ void DrawScene(Bitmap* pBitmap)
 
     float halfAngle = tan(glm::radians(FieldOfView) * 0.5f);
 
-    Color col{ 255, 0, 255 };
     for (int y = 0; y < ImageHeight; y++)
     {
         for (int x = 0; x < ImageWidth; x++)
