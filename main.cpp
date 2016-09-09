@@ -8,7 +8,7 @@ const int ImageWidth = 1024;
 const int ImageHeight = 768;
 const float FieldOfView = 60.0f;
 
-#define MAX_DEPTH 6
+#define MAX_DEPTH 8
 
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
 std::shared_ptr<Camera> pCamera;
@@ -16,10 +16,10 @@ std::shared_ptr<Camera> pCamera;
 void InitScene()
 {
     pCamera = std::make_shared<Camera>(vec3(0.0f, 6.0f, 6.0f),      // Where the camera is
-        vec3(0.0f, -1.0f, -1.0f),    // The point it is looking at
-        FieldOfView,                // The field of view of the 'lens'
-        ImageWidth, ImageHeight);   // The size in pixels of the view plane
-
+                                        vec3(0.0f, -1.0f, -1.0f),    // The point it is looking at
+                                        FieldOfView,                // The field of view of the 'lens'
+                                        ImageWidth, ImageHeight);   // The size in pixels of the view plane
+    
     Material mat;
     mat.albedo = vec3(.7f, .1f, .1f);
     mat.specular = vec3(.9f, .1f, .1f);
@@ -107,13 +107,14 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
     float diffuseI = 0.0f;
     float specI = 0.0f;
 
-    float objectDistance;
-    auto near = FindNearestObject(pos + (reflect * 0.001f), reflect, objectDistance);
+    // Otherwise, sample the lighting
+    // A fixed, directional light
+    vec3 lightPos = vec3(10.0f, 10.0f, 10.0f);
+    auto lightDir = glm::normalize(lightPos - pos);
 
-    if (near)
+    float occluderDistance;
+    if (!FindNearestObject(pos + (lightDir * 0.001f), lightDir, occluderDistance))
     {
-        auto nearestPos = pos + (reflect * objectDistance);
-        if (near->GetMaterial(pos)
         vec3 diffuseColor{ 0.0f, 0.0f, 0.0f };
 
         diffuseI = dot(normal, lightDir);
@@ -136,9 +137,8 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
             diffuseI = 0.0f;
         }
     }
-    outputColor += ((material.albedo * diffuseI) + (material.specular * specI)) * material.opacity;
-}
-return outputColor;
+    outputColor = outputColor + ((material.albedo * diffuseI) + (material.specular * specI)) * material.opacity;
+    return outputColor;
 }
 
 void DrawScene(Bitmap* pBitmap)
@@ -147,13 +147,13 @@ void DrawScene(Bitmap* pBitmap)
     {
         for (int x = 0; x < ImageWidth; x++)
         {
-            const int numSamples = 4;
+            const int numSamples = 1;
             vec3 color{ 0.0f, 0.0f, 0.0f };
             static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.4f), vec2(0.2f, 0.7f) };
             for (auto i = 0; i < numSamples; i++)
             {
                 vec2 sample(float(x) + patterns[i].x, float(y) + patterns[i].y);
-
+                 
                 auto ray = pCamera->GetWorldRay(sample);
                 color += TraceRay(pCamera->position, ray, 0);
             }

@@ -31,7 +31,7 @@ struct Camera
         imageHeight = (float)height;
 
         // The vector to the right of the camera - assume the 'Up' Vector is to the right
-        right = glm::cross(viewDirection, vec3(0.0f, 1.0f, 0.0f));
+        right = glm::cross(viewDirection, vec3(0.0f, 1.0, 0.0));
 
         // The 'up' vector pointing above the camera
         up = glm::cross(right, viewDirection);
@@ -53,8 +53,8 @@ struct Camera
     {
         // Could move some of this maths out of here. 
         vec3 dir(viewDirection);
-        float x = ((imageSample.x * 2.0f) / imageWidth) - 1.0f;
-        float y = ((imageSample.y * 2.0f) / imageHeight) - 1.0f;
+        float x = ((imageSample.x * real(2.0)) / imageWidth) - real(1.0);
+        float y = ((imageSample.y * real(2.0)) / imageHeight) - real(1.0);
 
         dir += (right * (halfAngle * aspectRatio * x));
         dir -= (up * (halfAngle * y));
