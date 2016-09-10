@@ -33,10 +33,9 @@ void InitScene()
     mat.albedo = vec3(0.7f, 0.0f, 0.7f);
     mat.specular = vec3(0.0f, 0.0f, 0.0f);
     mat.reflectance = 0.0f;
-    mat.opacity = 0.0f;
+    mat.opacity = 1.0f;
     // Purple sphere
     sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-2.0f, 2.0f, 0.f), 2.0f));
-    mat.opacity = 1.0f;
 
     mat.albedo = vec3(0.8f, 0.8f, 0.0f);
     mat.specular = vec3(0.1f, 0.9f, 0.0f);
@@ -96,13 +95,6 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 
     const Material& material = nearestObject->GetMaterial(pos);
 
-    bool inside = false;
-    if (glm::dot(raydir, normal) > 0)
-    {
-        normal = -normal;
-        inside = true;
-        //return vec3(5.0f,  5.0f, 5.0f);
-    }
     vec3 reflect = glm::normalize(glm::reflect(raydir, normal));
 
     // If the object is transparent, get the reflection color
@@ -111,27 +103,8 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
         vec3 reflectColor(0.0f, 0.0f, 0.0f);
         vec3 refractColor(0.0f, 0.0f, 0.0f);
 
-        if (material.reflectance != 0.0f)
-        {
-            reflectColor = TraceRay(pos + (reflect * 0.01f), reflect, depth + 1);
-        }
-
-        float facingratio = -glm::dot(raydir, normal);
-
-        // change the mix value to tweak the effect
-        float fresneleffect = glm::mix(pow(1.0f - facingratio, 3.0f), 1.0f, .1f);
-        if (material.opacity < 1.0f)
-        {
-            float ior = 1.1f, eta = (inside) ? ior : 1.0f / ior; // are we inside or outside the surface? 
-            float cosi = -glm::dot(normal, raydir);
-            float k = 1.0f - eta * eta * (1.0f - cosi * cosi);
-            vec3 refrdir = raydir * eta + normal * (eta *  cosi - sqrt(k));
-            refrdir = normalize(refrdir);
-
-            refractColor = TraceRay(pos + refrdir * 0.001f, refrdir, depth + 1);// *(1.0f - material.opacity);
-        }
-
-        outputColor = (reflectColor * fresneleffect) + (refractColor * (1.0f - fresneleffect) * (1.0f - material.opacity) * material.albedo);
+        reflectColor = TraceRay(pos + (reflect * 0.01f), reflect, depth + 1);
+        outputColor = (reflectColor * material.reflectance);
     }
     else
     {
