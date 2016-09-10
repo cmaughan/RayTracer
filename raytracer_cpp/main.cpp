@@ -4,8 +4,8 @@
 #include "sceneobjects.h"
 #include "camera.h"
 
-const int ImageWidth = 1024;
-const int ImageHeight = 768;
+const int ImageWidth = 256;
+const int ImageHeight = 256;
 const float FieldOfView = 60.0f;
 
 #define MAX_DEPTH 3
@@ -79,106 +79,15 @@ SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance
 
 vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 {
-    const SceneObject* nearestObject = nullptr;
-    float distance;
-    nearestObject = FindNearestObject(rayorig, raydir, distance);
-
-    if (!nearestObject)
+    float dist;
+    auto pObj = FindNearestObject(rayorig, raydir, dist);
+   
+    if (pObj)
     {
-        return vec3{ 0.1f, 0.1f, 0.1f };
+        auto& mat = pObj->GetMaterial(rayorig + raydir * dist);
+        return mat.albedo;
     }
-    vec3 pos = rayorig + (raydir * distance);
-    vec3 normal = nearestObject->GetSurfaceNormal(pos);
-    vec3 outputColor{ 0.0f, 0.0f, 0.0f };
-
-    const Material& material = nearestObject->GetMaterial(pos);
-
-    vec3 reflect = glm::normalize(glm::reflect(raydir, normal));
-
-    // If the object is transparent, get the reflection color
-    if (depth < MAX_DEPTH && (material.reflectance > 0.0f))
-    {
-        vec3 reflectColor(0.0f, 0.0f, 0.0f);
-        vec3 refractColor(0.0f, 0.0f, 0.0f);
-
-        reflectColor = TraceRay(pos + (reflect * 0.01f), reflect, depth + 1);
-        outputColor = (reflectColor * material.reflectance);
-    }
-    // For every emitter, gather the light
-    for (auto& emitterObj : sceneObjects)
-    {
-        vec3 emitterDir = emitterObj->GetRayFrom(pos);
-
-        float bestDistance = std::numeric_limits<float>::max();
-        SceneObject* pOccluder = nullptr;
-        const Material* pEmissiveMat = nullptr;
-        for (auto& occluder : sceneObjects)
-        {
-            if (occluder->Intersects(pos + (emitterDir * 0.001f), emitterDir, distance))
-            {
-                if (occluder == emitterObj)
-                {
-                    if (bestDistance > distance)
-                    {
-                        bestDistance = distance;
-
-                        // If we found our emitter, and the point we hit is not emissive, then ignore
-                        pEmissiveMat = &occluder->GetMaterial(pos + (emitterDir * distance));
-                        if (pEmissiveMat->emissive == vec3(0.0f, 0.0f, 0.0f))
-                        {
-                            pEmissiveMat = nullptr;
-                        }
-                        else
-                        {
-                            pOccluder = nullptr;
-                        }
-                    }
-                }
-                else
-                {
-                    if (bestDistance > distance)
-                    {
-                        pOccluder = occluder.get();
-                        pEmissiveMat = nullptr;
-                        bestDistance = distance;
-                    }
-                }
-            }
-        }
-
-        // No emissive material, or occluder
-        if (!pEmissiveMat || pOccluder)
-        {
-            continue;
-        }
-
-        float diffuseI = 0.0f;
-        float specI = 0.0f;
-
-        diffuseI = dot(normal, emitterDir);
-
-        if (diffuseI > 0.0f)
-        {
-            specI = dot(reflect, emitterDir);
-            if (specI > 0.0f)
-            {
-                specI = pow(specI, 10);
-                specI = std::max(0.0f, specI);
-            }
-            else
-            {
-                specI = 0.0f;
-            }
-        }
-        else
-        {
-            diffuseI = 0.0f;
-        }
-        outputColor += (pEmissiveMat->emissive * material.albedo * diffuseI) + (material.specular * specI);
-    }
-    outputColor *= 1.f - material.reflectance;
-    outputColor += material.emissive;
-    return outputColor;
+    return vec3(0.0f, 0.0f, 0.0f);
 }
 
 void DrawScene(Bitmap* pBitmap)
@@ -187,17 +96,10 @@ void DrawScene(Bitmap* pBitmap)
     {
         for (int x = 0; x < ImageWidth; x++)
         {
-            const int numSamples = 4;
-            vec3 color{ 0.0f, 0.0f, 0.0f };
-            static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.7f), vec2(0.2f, 0.8f) };
-            for (auto i = 0; i < numSamples; i++)
-            {
-                vec2 sample(float(x) + patterns[i].x, float(y) + patterns[i].y);
+            vec2 sample(float(x) + .5f, float(y) + .5f);
 
-                auto ray = pCamera->GetWorldRay(sample);
-                color += TraceRay(pCamera->position, ray, 0);
-            }
-            color *= (1.0f / numSamples);
+            auto ray = pCamera->GetWorldRay(sample);
+            vec3 color = TraceRay(pCamera->position, ray, 0);
 
             // Color might have maxed out, so clamp.
             color = color * 255.0f;
