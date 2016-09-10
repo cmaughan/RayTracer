@@ -8,7 +8,7 @@ const int ImageWidth = 1024;
 const int ImageHeight = 768;
 const float FieldOfView = 60.0f;
 
-#define MAX_DEPTH 5
+#define MAX_DEPTH 3
 
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
 std::shared_ptr<Camera> pCamera;
@@ -187,9 +187,9 @@ void DrawScene(Bitmap* pBitmap)
     {
         for (int x = 0; x < ImageWidth; x++)
         {
-            const int numSamples = 1;
+            const int numSamples = 4;
             vec3 color{ 0.0f, 0.0f, 0.0f };
-            static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.4f), vec2(0.2f, 0.7f) };
+            static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.7f), vec2(0.2f, 0.8f) };
             for (auto i = 0; i < numSamples; i++)
             {
                 vec2 sample(float(x) + patterns[i].x, float(y) + patterns[i].y);
