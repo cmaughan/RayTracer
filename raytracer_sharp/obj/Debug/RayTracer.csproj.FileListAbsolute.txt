@@ -7,3 +7,15 @@ C:\Dev\yorkcodedojo\raytracer_sharp\bin\Debug\Tracer.exe
 C:\Dev\yorkcodedojo\raytracer_sharp\bin\Debug\Tracer.pdb
 C:\Dev\yorkcodedojo\raytracer_sharp\obj\Debug\Tracer.exe
 C:\Dev\yorkcodedojo\raytracer_sharp\obj\Debug\Tracer.pdb
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\bin\Debug\Tracer.exe.config
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\obj\Debug\Tracer.exe
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\obj\Debug\Tracer.pdb
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\bin\Debug\Tracer.exe
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\bin\Debug\Tracer.pdb
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\obj\Debug\RayTracer.csprojResolveAssemblyReference.cache
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\obj\Debug\Tracer.Form1.resources
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\obj\Debug\Tracer.Properties.Resources.resources
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\obj\Debug\RayTracer.csproj.GenerateResource.Cache
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\bin\Debug\GlmNet.dll
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\bin\Debug\GlmNet.pdb
+E:\Dev\yorkcodedojo\raytracer\raytracer_sharp\bin\Debug\GlmNet.xml
