@@ -76,6 +76,9 @@ SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance
 // Trace a ray into the scene, return the accumulated light value
 vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 {
+    // Here's how to print out a vector for inspection
+    //std::cout << "Ray: " << glm::to_string(raydir) << std::endl;
+
     // For now, just convert the incoming ray to a 'color' to display it has it changes 
     return vec3((raydir * .5f) + vec3(0.5f, 0.5f, 0.5f));
 }

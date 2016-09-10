@@ -10,6 +10,7 @@
 
 #include "glm/glm/glm.hpp"
 #include "glm/glm/gtx/intersect.hpp"
+#include "glm/glm/gtx/string_cast.hpp"
 
 // Useful vectors
 using vec3 = glm::vec3;

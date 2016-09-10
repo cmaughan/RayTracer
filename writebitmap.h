@@ -1,12 +1,5 @@
 #pragma once
 
-#include <cassert>
-#include <cstdint>
-#include <malloc.h>
-#define _USE_MATH_DEFINES
-#include <math.h>
-#include <stdio.h>
-
 // This header implements a simple bitmap object, with writing to a file.
 // It doesn't require any windows headers.
 struct Color
