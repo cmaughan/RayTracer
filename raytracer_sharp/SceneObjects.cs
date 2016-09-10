@@ -1,129 +1,138 @@
-/*
-struct Material
+using System;
+using GlmNet;
+
+namespace Tracer
 {
-    vec3 albedo;        // Base color of the surface
-    vec3 specular;      // Specular reflection color
-    float reflectance;  // How reflective the surface is
-    vec3 emissive;      // Light that the material emits
-};
 
-enum class SceneObjectType
-{
-    Sphere,
-    Plane
-};
-
-struct SceneObject
-{
-    // Given a point on the surface, return the material at that point
-    virtual const Material& GetMaterial(const vec3& pos) const = 0;
-
-    // Is it a sphere or a plane?
-    virtual SceneObjectType GetSceneObjectType() const = 0;
-
-    // Given a point on the surface, return a normal
-    virtual vec3 GetSurfaceNormal(const vec3& pos) const = 0;
-
-    // Given a source position, return a ray to this object's center
-    virtual vec3 GetRayFrom(const vec3& from) const = 0;
-
-    // Intersect this object with a ray and figure out if it hits, and return the distance to the hit point 
-    virtual bool Intersects(const vec3& rayOrigin, const vec3& rayDir, float& distance) const = 0;
-};
-
-// A sphere, at a coordinate, with a radius and a material
-struct Sphere : SceneObject
-{
-    vec3 center;
-    float radius;
-    Material material;
-
-    Sphere(const Material& mat, const vec3& c, const float r)
+    public struct Material
     {
-        material = mat;
-        center = c;
-        radius = r;
-    }
+        public vec3 albedo;        // Base color of the surface
+        public vec3 specular;      // Specular reflection color
+        public float reflectance;               // How reflective the surface is
+        public vec3 emissive;      // Light that the material emits
+    };
 
-    virtual const Material& GetMaterial(const vec3& pos) const override
+    public enum SceneObjectType
     {
-        return material;
-    }
+        Sphere,
+        Plane
+    };
 
-    virtual SceneObjectType GetSceneObjectType() const override
+    public abstract class SceneObject
     {
-        return SceneObjectType::Sphere;
-    }
+        // Given a point on the surface, return the material at that point
+        public abstract Material GetMaterial(vec3 pos);
 
-    virtual vec3 GetSurfaceNormal(const vec3& pos) const
-    {
-        return normalize(pos - center);
-    }
-    
-    virtual vec3 GetRayFrom(const vec3& from) const override
-    {
-        return normalize(center - from);
-    }
+        // Is it a sphere or a plane?
+        public abstract SceneObjectType GetSceneObjectType();
 
-    virtual bool Intersects(const vec3& rayOrigin, const vec3& rayDir, float& distance) const
-    {
-        bool hit = glm::intersectRaySphere(rayOrigin, glm::normalize(rayDir), center, radius * radius, distance);
-        return hit;
-    }
-};
+        // Given a point on the surface, return a normal
+        public abstract vec3 GetSurfaceNormal(vec3 pos);
 
-// A plane, centered at origin, with a normal direction
-struct Plane : SceneObject
-{
-    vec3 normal;
-    vec3 origin;
-    virtual SceneObjectType GetSceneObjectType() const override 
-    {
-        return SceneObjectType::Plane;
-    }
-};
+        // Given a source position, return a ray to this object's center
+        public abstract vec3 GetRayFrom(vec3 from);
 
-// A tiled plane.  returns a different material based on the hit point to represent the grid
-struct TiledPlane : Plane
-{
-    mutable Material mat;
-    TiledPlane(const vec3& o, const vec3& n)
-    {
-        normal = n;
-        origin = o;
-        mat.reflectance = 0.0f;
-        mat.specular = vec3(1.0f, 1.0f, 1.0f);
-    }
+        // Intersect this object with a ray and figure out if it hits, and return the distance to the hit point 
+        public abstract bool Intersects(vec3 rayOrigin, vec3 rayDir, out float distance);
+    };
 
-    virtual const Material& GetMaterial(const vec3& pos) const override
+    // A sphere, at a coordinate, with a radius and a material
+    public class Sphere : SceneObject
     {
-        bool white = ((int(floor(pos.x) + floor(pos.z)) & 1) == 0);
+        public vec3 center;
+        public float radius;
+        public Material material;
 
-        if (white)
+        public Sphere(Material mat, vec3 c, float r)
         {
-            mat.albedo = vec3(1.0f, 1.0f, 1.0f);
+            material = mat;
+            center = c;
+            radius = r;
         }
-        else
+        public override Material GetMaterial(vec3 pos)
         {
-            mat.albedo = vec3(0.0f, 0.0f, 0.0f);
+            return material;
         }
-        return mat;
-    }
-    
-    virtual vec3 GetSurfaceNormal(const vec3& pos) const
-    {
-        return normal;
-    }
-    
-    virtual vec3 GetRayFrom(const vec3& from) const override
-    {
-        return normalize(origin - from);
-    }
-    
-    virtual bool Intersects(const vec3& rayOrigin, const vec3& rayDir, float& distance) const override
-    {
-        return glm::intersectRayPlane(rayOrigin, glm::normalize(rayDir), origin, normal, distance);
-    }
-};
 
-    */
+        public override SceneObjectType GetSceneObjectType()
+        {
+            return SceneObjectType.Sphere;
+        }
+
+        public override vec3 GetSurfaceNormal(vec3 pos)
+        {
+            return glm.normalize(pos - center);
+        }
+
+        public override vec3 GetRayFrom(vec3 from)
+        {
+            return glm.normalize(center - from);
+        }
+
+        public override bool Intersects(vec3 rayOrigin, vec3 rayDir, out float distance)
+        {
+            distance = 0.0f;
+             return true;
+            //return glm.intersectRaySphere(rayOrigin, glm.normalize(rayDir), center, radius * radius, distance);
+        }
+    };
+
+    // A plane, centered at origin, with a normal direction
+    public abstract class Plane : SceneObject
+    {
+        public override SceneObjectType GetSceneObjectType()
+        {
+            return SceneObjectType.Plane;
+        }
+    };
+
+    // A tiled plane.  returns a different material based on the hit point to represent the grid
+    public class TiledPlane : Plane
+    {
+        public vec3 normal;
+        public vec3 origin;
+        public Material mat;
+
+        public TiledPlane(vec3 o, vec3 n)
+        {
+            normal = n;
+            origin = o;
+            mat.reflectance = 0.0f;
+            mat.emissive = new vec3(0.0f, 0.0f, 0.0f);
+            mat.specular = new vec3(1.0f, 1.0f, 1.0f);
+        }
+
+        public override Material GetMaterial(vec3 pos) 
+        {
+            bool white = (((int)(System.Math.Floor(pos.x) + System.Math.Floor(pos.z)) & 1) == 0);
+
+            if (white)
+            {
+                mat.albedo = new vec3(1.0f, 1.0f, 1.0f);
+            }
+            else
+            {
+                mat.albedo = new vec3(0.0f, 0.0f, 0.0f);
+            }
+            return mat;
+        }
+
+        public override vec3 GetSurfaceNormal(vec3 pos)
+        {
+            return normal;
+        }
+
+        public override vec3 GetRayFrom(vec3 from)
+        {
+            return glm.normalize(origin - from);
+        }
+
+        public override bool Intersects(vec3 rayOrigin, vec3 rayDir, out float distance)
+        {
+            distance = 0.0f;
+            return true;
+            //return glm.intersectRayPlane(rayOrigin, glm.normalize(rayDir), origin, normal, distance);
+        }
+    };
+
+}
