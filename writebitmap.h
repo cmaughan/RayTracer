@@ -7,7 +7,7 @@
 #include <math.h>
 #include <stdio.h>
 
-// This header implements a simple bitmap object, with plotting and writing to a file.
+// This header implements a simple bitmap object, with writing to a file.
 // It doesn't require any windows headers.
 struct Color
 {
