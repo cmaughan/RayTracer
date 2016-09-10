@@ -5,7 +5,6 @@ struct Material
     vec3 albedo;        // Base color of the surface
     vec3 specular;      // Specular reflection color
     float reflectance;  // How reflective the surface is
-    float opacity;      // How opaque the surface is
     vec3 emissive;      // Light that the material emits
 };
 
@@ -17,13 +16,23 @@ enum class SceneObjectType
 
 struct SceneObject
 {
+    // Given a point on the surface, return the material at that point
     virtual const Material& GetMaterial(const vec3& pos) const = 0;
+
+    // Is it a sphere or a plane?
     virtual SceneObjectType GetSceneObjectType() const = 0;
+
+    // Given a point on the surface, return a normal
     virtual vec3 GetSurfaceNormal(const vec3& pos) const = 0;
+
+    // Given a source position, return a ray to this object's center
     virtual vec3 GetRayFrom(const vec3& from) const = 0;
+
+    // Intersect this object with a ray and figure out if it hits, and return the distance to the hit point 
     virtual bool Intersects(const vec3& rayOrigin, const vec3& rayDir, float& distance) const = 0;
 };
 
+// A sphere, at a coordinate, with a radius and a material
 struct Sphere : SceneObject
 {
     vec3 center;
@@ -64,6 +73,7 @@ struct Sphere : SceneObject
     }
 };
 
+// A plane, centered at origin, with a normal direction
 struct Plane : SceneObject
 {
     vec3 normal;
@@ -74,6 +84,7 @@ struct Plane : SceneObject
     }
 };
 
+// A tiled plane.  returns a different material based on the hit point to represent the grid
 struct TiledPlane : Plane
 {
     mutable Material mat;
@@ -82,7 +93,6 @@ struct TiledPlane : Plane
         normal = n;
         origin = o;
         mat.reflectance = 0.0f;
-        mat.opacity = 1.0f;
         mat.specular = vec3(1.0f, 1.0f, 1.0f);
     }
 
