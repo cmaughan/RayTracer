@@ -71,9 +71,7 @@ namespace Tracer
 
         public override bool Intersects(vec3 rayOrigin, vec3 rayDir, out float distance)
         {
-            distance = 0.0f;
-             return true;
-            //return glm.intersectRaySphere(rayOrigin, glm.normalize(rayDir), center, radius * radius, distance);
+            return GeometryMath.intersectRaySphere(rayOrigin, glm.normalize(rayDir), center, radius * radius, out distance);
         }
     };
 
@@ -129,9 +127,7 @@ namespace Tracer
 
         public override bool Intersects(vec3 rayOrigin, vec3 rayDir, out float distance)
         {
-            distance = 0.0f;
-            return true;
-            //return glm.intersectRayPlane(rayOrigin, glm.normalize(rayDir), origin, normal, distance);
+            return GeometryMath.intersectRayPlane(rayOrigin, glm.normalize(rayDir), origin, normal, out distance);
         }
     };
 

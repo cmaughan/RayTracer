@@ -64,27 +64,6 @@ namespace Tracer
             sceneObjects.Add(new TiledPlane(new vec3(0.0f, 0.0f, 0.0f), new vec3(0.0f, 1.0f, 0.0f)));
         }
 
-        // Find the nearest object in the scene, given a ray start and direction
-        SceneObject FindNearestObject(vec3 rayorig, vec3 raydir, out float nearestDistance)
-        {
-            SceneObject nearestObject = null;
-            nearestDistance = float.MaxValue;
-
-            // find intersection of this ray with the object in the scene
-            foreach (var obj in sceneObjects)
-            {
-                float distance;
-                if (obj.Intersects(rayorig, glm.normalize(raydir), out distance) &&
-                    nearestDistance > distance)
-                {
-                    nearestObject = obj;
-                    nearestDistance = distance;
-                }
-            }
-            return nearestObject;
-        }
-
-
         // Trace a ray into the scene, return the accumulated light value
         vec3 TraceRay(vec3 rayorig, vec3 raydir, int depth)
         {

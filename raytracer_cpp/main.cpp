@@ -4,10 +4,10 @@
 #include "sceneobjects.h"
 #include "camera.h"
 
-const int ImageWidth = 1024;
-const int ImageHeight = 768;
+const int ImageWidth = 512;
+const int ImageHeight = 512;
 const float FieldOfView = 60.0f;
-const int MaxDepth = 4;
+const int MaxDepth = 3;
 
 // A list of objects in the scene
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
@@ -51,26 +51,6 @@ void InitScene()
 
     // Plane on the ground
     sceneObjects.push_back(std::make_shared<TiledPlane>(vec3(0.0f, 0.0f, 0.0f), normalize(vec3(0.0f, 1.0f, 0.0f))));
-}
-
-// Find the nearest object in the scene, given a ray start and direction
-SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance)
-{
-    SceneObject* nearestObject = nullptr;
-    nearestDistance = std::numeric_limits<float>::max();
-
-    // find intersection of this ray with the object in the scene
-    for (auto pObject : sceneObjects)
-    {
-        float distance;
-        if (pObject->Intersects(rayorig, glm::normalize(raydir), distance) &&
-            nearestDistance > distance)
-        {
-            nearestObject = pObject.get();
-            nearestDistance = distance;
-        }
-    }
-    return nearestObject;
 }
 
 // Trace a ray into the scene, return the accumulated light value
