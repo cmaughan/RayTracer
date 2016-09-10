@@ -13,50 +13,48 @@ const float FieldOfView = 60.0f;
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
 std::shared_ptr<Camera> pCamera;
 
+
 void InitScene()
 {
-    pCamera = std::make_shared<Camera>(vec3(0.0f, 8.0f, 8.0f),      // Where the camera is
+    pCamera = std::make_shared<Camera>(vec3(0.0f, 6.0f, 8.0f),      // Where the camera is
         vec3(0.0f, -.8f, -1.0f),    // The point it is looking at
         FieldOfView,                // The field of view of the 'lens'
         ImageWidth, ImageHeight);   // The size in pixels of the view plane
 
+    // Red ball
     Material mat;
     mat.albedo = vec3(.7f, .1f, .1f);
     mat.specular = vec3(.9f, .1f, .1f);
     mat.reflectance = 0.5f;
-    mat.emissive = vec3(0.0f, 0.0f, 0.0f);
-    mat.opacity = 1.0f;
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(0.0f, 2.0f, 0.f), 2.0f));
 
-    // Red sphere
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(2.0f, 2.0f, 0.f), 2.0f));
-
+    // Purple ball
     mat.albedo = vec3(0.7f, 0.0f, 0.7f);
-    mat.specular = vec3(0.0f, 0.0f, 0.0f);
-    mat.reflectance = 0.0f;
-    mat.opacity = 1.0f;
-    // Purple sphere
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-2.0f, 2.0f, 0.f), 2.0f));
+    mat.specular = vec3(0.9f, 0.9f, 0.8f);
+    mat.reflectance = 0.5f;
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-2.5f, 1.0f, 2.f), 1.0f));
 
-    mat.albedo = vec3(0.8f, 0.8f, 0.0f);
-    mat.specular = vec3(0.1f, 0.9f, 0.0f);
+    // Blue ball
+    mat.albedo = vec3(0.0f, 0.3f, 1.0f);
+    mat.specular = vec3(0.0f, 0.0f, 1.0f);
     mat.reflectance = 0.0f;
     mat.emissive = vec3(0.0f, 0.0f, 0.0f);
-    // Yellow sphere
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(0.f, 2.0f, -3.5f), 2.0f));
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-0.0f, 0.5f, 3.f), 0.5f));
+    
+    // Green ball
+    mat.albedo = vec3(1.0f, 1.0f, 1.0f);
+    mat.specular = vec3(0.0f, 0.0f, 0.0f);
+    mat.reflectance = .0f;
+    mat.emissive = vec3(2.0f, 2.0f, 2.0f);
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(2.8f, 0.8f, 2.0f), 0.8f));
 
+    // White light
     mat.albedo = vec3(0.0f, 0.8f, 0.0f);
     mat.specular = vec3(0.0f, 0.0f, 0.0f);
     mat.reflectance = 0.0f;
     mat.emissive = vec3(1.0f, 1.0f, 1.0f);
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(3.f, 10.5f, 10.9f), 0.5f));
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-10.8f, 6.4f, 10.0f), 0.4f));
 
-    mat.albedo = vec3(1.0f, 0.0f, 0.0f);
-    mat.specular = vec3(0.0f, 0.0f, 0.0f);
-    mat.reflectance = 0.0f;
-    mat.emissive = vec3(1.0f, 1.0f, 1.0f);
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(0.f, 10.0f, -10.0f), 0.5f));
-
-    mat.emissive = vec3(0.0f);
     sceneObjects.push_back(std::make_shared<TiledPlane>(vec3(0.0f, 0.0f, 0.0f), normalize(vec3(0.0f, 1.0f, 0.0f))));
 }
 
@@ -98,7 +96,7 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
     vec3 reflect = glm::normalize(glm::reflect(raydir, normal));
 
     // If the object is transparent, get the reflection color
-    if (depth < MAX_DEPTH && ((material.reflectance > 0.0f) || (material.opacity < 1.0f)))
+    if (depth < MAX_DEPTH && (material.reflectance > 0.0f))
     {
         vec3 reflectColor(0.0f, 0.0f, 0.0f);
         vec3 refractColor(0.0f, 0.0f, 0.0f);
@@ -106,83 +104,80 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
         reflectColor = TraceRay(pos + (reflect * 0.01f), reflect, depth + 1);
         outputColor = (reflectColor * material.reflectance);
     }
-    else
+    // For every emitter, gather the light
+    for (auto& emitterObj : sceneObjects)
     {
-        // For every emitter, gather the light
-        for (auto& emitterObj : sceneObjects)
+        vec3 emitterDir = emitterObj->GetRayFrom(pos);
+
+        float bestDistance = std::numeric_limits<float>::max();
+        SceneObject* pOccluder = nullptr;
+        const Material* pEmissiveMat = nullptr;
+        for (auto& occluder : sceneObjects)
         {
-            vec3 emitterDir = emitterObj->GetRayFrom(pos);
-
-            float bestDistance = std::numeric_limits<float>::max();
-            SceneObject* pOccluder = nullptr;
-            const Material* pEmissiveMat = nullptr;
-            for (auto& occluder : sceneObjects)
+            if (occluder->Intersects(pos + (emitterDir * 0.001f), emitterDir, distance))
             {
-                if (occluder->Intersects(pos + (emitterDir * 0.001f), emitterDir, distance))
+                if (occluder == emitterObj)
                 {
-                    if (occluder == emitterObj)
+                    if (bestDistance > distance)
                     {
-                        if (bestDistance > distance)
-                        {
-                            bestDistance = distance;
+                        bestDistance = distance;
 
-                            // If we found our emitter, and the point we hit is not emissive, then ignore
-                            pEmissiveMat = &occluder->GetMaterial(pos + (emitterDir * distance));
-                            if (pEmissiveMat->emissive == vec3(0.0f, 0.0f, 0.0f))
-                            {
-                                pEmissiveMat = nullptr;
-                            }
-                            else
-                            {
-                                pOccluder = nullptr;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (bestDistance > distance)
+                        // If we found our emitter, and the point we hit is not emissive, then ignore
+                        pEmissiveMat = &occluder->GetMaterial(pos + (emitterDir * distance));
+                        if (pEmissiveMat->emissive == vec3(0.0f, 0.0f, 0.0f))
                         {
-                            pOccluder = occluder.get();
                             pEmissiveMat = nullptr;
-                            bestDistance = distance;
+                        }
+                        else
+                        {
+                            pOccluder = nullptr;
                         }
                     }
-                }
-            }
-
-            // No emissive material, or occluder
-            if (!pEmissiveMat || pOccluder)
-            {
-                continue;
-            }
-
-            float diffuseI = 0.0f;
-            float specI = 0.0f;
-
-            diffuseI = dot(normal, emitterDir);
-
-            if (diffuseI > 0.0f)
-            {
-                specI = dot(reflect, emitterDir);
-                if (specI > 0.0f)
-                {
-                    specI = pow(specI, 10);
-                    specI = std::max(0.0f, specI);
                 }
                 else
                 {
-                    specI = 0.0f;
+                    if (bestDistance > distance)
+                    {
+                        pOccluder = occluder.get();
+                        pEmissiveMat = nullptr;
+                        bestDistance = distance;
+                    }
                 }
+            }
+        }
+
+        // No emissive material, or occluder
+        if (!pEmissiveMat || pOccluder)
+        {
+            continue;
+        }
+
+        float diffuseI = 0.0f;
+        float specI = 0.0f;
+
+        diffuseI = dot(normal, emitterDir);
+
+        if (diffuseI > 0.0f)
+        {
+            specI = dot(reflect, emitterDir);
+            if (specI > 0.0f)
+            {
+                specI = pow(specI, 10);
+                specI = std::max(0.0f, specI);
             }
             else
             {
-                diffuseI = 0.0f;
+                specI = 0.0f;
             }
-            outputColor += (pEmissiveMat->emissive * material.albedo * diffuseI) + (material.specular * specI);
         }
+        else
+        {
+            diffuseI = 0.0f;
+        }
+        outputColor += (pEmissiveMat->emissive * material.albedo * diffuseI) + (material.specular * specI);
     }
-    //outputColor *= 1.f - material.reflectance;
-    outputColor +=  material.emissive;
+    outputColor *= 1.f - material.reflectance;
+    outputColor += material.emissive;
     return outputColor;
 }
 
