@@ -4,8 +4,8 @@
 #include "sceneobjects.h"
 #include "camera.h"
 
-const int ImageWidth = 1024;
-const int ImageHeight = 768;
+const int ImageWidth = 256;
+const int ImageHeight = 256;
 const float FieldOfView = 60.0f;
 
 #define MAX_DEPTH 3
