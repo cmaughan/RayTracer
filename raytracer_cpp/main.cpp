@@ -101,7 +101,7 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
         vec3 reflectColor(0.0f, 0.0f, 0.0f);
         vec3 refractColor(0.0f, 0.0f, 0.0f);
 
-        reflectColor = TraceRay(pos + (reflect * 0.01f), reflect, depth + 1);
+        reflectColor = TraceRay(pos + (reflect * 0.001f), reflect, depth + 1);
         outputColor = (reflectColor * material.reflectance);
     }
     // For every emitter, gather the light
