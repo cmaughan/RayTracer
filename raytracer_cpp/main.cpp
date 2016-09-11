@@ -106,8 +106,20 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
             {
                 float diffuseI = 0.0f;
                 float specI = 0.0f;
-
                 diffuseI = dot(normal, emitterDir);
+
+                for (auto& obj : sceneObjects)
+                {
+                    if (obj != emitterObj)
+                    {
+                        float occluderDist;
+                        if (obj->Intersects(pos + (emitterDir * 0.001f), emitterDir, occluderDist))
+                        {
+                            diffuseI = 0.0f;
+                            break;
+                        }
+                    }
+                }
 
                 if (diffuseI > 0.0f)
                 {
