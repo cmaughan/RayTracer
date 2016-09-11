@@ -123,6 +123,17 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 
                 if (diffuseI > 0.0f)
                 {
+                    auto reflect = normalize(glm::reflect(raydir, normal));
+                    specI = glm::dot(reflect, emitterDir);
+                    if (specI > 0.0f)
+                    {
+                        specI = pow(specI, 10);
+                    }
+                    else
+                    {
+                        specI = 0.0f;
+                    }
+
                     outputColor += (emissiveMat.emissive * material.albedo * diffuseI) + (material.specular * specI);
                 }
             }

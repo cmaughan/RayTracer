@@ -93,7 +93,7 @@ struct TiledPlane : Plane
         normal = n;
         origin = o;
         mat.reflectance = 0.0f;
-        mat.specular = vec3(1.0f, 1.0f, 1.0f);
+        mat.specular = vec3(0.5f, 0.5f, 0.5f);
     }
 
     virtual const Material& GetMaterial(const vec3& pos) const override
