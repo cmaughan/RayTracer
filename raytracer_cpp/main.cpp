@@ -4,8 +4,8 @@
 #include "sceneobjects.h"
 #include "camera.h"
 
-const int ImageWidth = 1024;
-const int ImageHeight = 768;
+const int ImageWidth = 256;
+const int ImageHeight = 256;
 const float FieldOfView = 60.0f;
 
 #define MAX_DEPTH 3
@@ -40,7 +40,7 @@ void InitScene()
     mat.reflectance = 0.0f;
     mat.emissive = vec3(0.0f, 0.0f, 0.0f);
     sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-0.0f, 0.5f, 3.f), 0.5f));
-    
+
     // Green ball
     mat.albedo = vec3(1.0f, 1.0f, 1.0f);
     mat.specular = vec3(0.0f, 0.0f, 0.0f);
@@ -93,92 +93,31 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 
     const Material& material = nearestObject->GetMaterial(pos);
 
-    vec3 reflect = glm::normalize(glm::reflect(raydir, normal));
-
-    // If the object is transparent, get the reflection color
-    if (depth < MAX_DEPTH && (material.reflectance > 0.0f))
-    {
-        vec3 reflectColor(0.0f, 0.0f, 0.0f);
-        vec3 refractColor(0.0f, 0.0f, 0.0f);
-
-        reflectColor = TraceRay(pos + (reflect * 0.01f), reflect, depth + 1);
-        outputColor = (reflectColor * material.reflectance);
-    }
     // For every emitter, gather the light
     for (auto& emitterObj : sceneObjects)
     {
         vec3 emitterDir = emitterObj->GetRayFrom(pos);
 
-        float bestDistance = std::numeric_limits<float>::max();
-        SceneObject* pOccluder = nullptr;
-        const Material* pEmissiveMat = nullptr;
-        for (auto& occluder : sceneObjects)
+        if (emitterObj->Intersects(pos + (emitterDir * 0.001f), emitterDir, distance))
         {
-            if (occluder->Intersects(pos + (emitterDir * 0.001f), emitterDir, distance))
+            // If we found our emitter, and the point we hit is not emissive, then ignore
+            auto emissiveMat = emitterObj->GetMaterial(pos + (emitterDir * distance));
+            if (emissiveMat.emissive != vec3(0.0f, 0.0f, 0.0f))
             {
-                if (occluder == emitterObj)
-                {
-                    if (bestDistance > distance)
-                    {
-                        bestDistance = distance;
+                float diffuseI = 0.0f;
+                float specI = 0.0f;
 
-                        // If we found our emitter, and the point we hit is not emissive, then ignore
-                        pEmissiveMat = &occluder->GetMaterial(pos + (emitterDir * distance));
-                        if (pEmissiveMat->emissive == vec3(0.0f, 0.0f, 0.0f))
-                        {
-                            pEmissiveMat = nullptr;
-                        }
-                        else
-                        {
-                            pOccluder = nullptr;
-                        }
-                    }
-                }
-                else
+                diffuseI = dot(normal, emitterDir);
+
+                if (diffuseI > 0.0f)
                 {
-                    if (bestDistance > distance)
-                    {
-                        pOccluder = occluder.get();
-                        pEmissiveMat = nullptr;
-                        bestDistance = distance;
-                    }
+                    outputColor += (emissiveMat.emissive * material.albedo * diffuseI) + (material.specular * specI);
                 }
             }
         }
-
-        // No emissive material, or occluder
-        if (!pEmissiveMat || pOccluder)
-        {
-            continue;
-        }
-
-        float diffuseI = 0.0f;
-        float specI = 0.0f;
-
-        diffuseI = dot(normal, emitterDir);
-
-        if (diffuseI > 0.0f)
-        {
-            specI = dot(reflect, emitterDir);
-            if (specI > 0.0f)
-            {
-                specI = pow(specI, 10);
-                specI = std::max(0.0f, specI);
-            }
-            else
-            {
-                specI = 0.0f;
-            }
-        }
-        else
-        {
-            diffuseI = 0.0f;
-        }
-        outputColor += (pEmissiveMat->emissive * material.albedo * diffuseI) + (material.specular * specI);
     }
-    outputColor *= 1.f - material.reflectance;
-    outputColor += material.emissive;
-    return outputColor;
+
+    return outputColor + material.emissive;
 }
 
 void DrawScene(Bitmap* pBitmap)
