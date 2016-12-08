@@ -87,13 +87,20 @@ struct Plane : SceneObject
 // A tiled plane.  returns a different material based on the hit point to represent the grid
 struct TiledPlane : Plane
 {
-    mutable Material mat;
+    Material blackMat;
+    Material whiteMat;
+
     TiledPlane(const vec3& o, const vec3& n)
     {
         normal = n;
         origin = o;
-        mat.reflectance = 0.0f;
-        mat.specular = vec3(1.0f, 1.0f, 1.0f);
+        blackMat.reflectance = 0.0f;
+        blackMat.specular = vec3(1.0f, 1.0f, 1.0f);
+        blackMat.albedo = vec3(0.0f, 0.0f, 0.0f);
+
+        whiteMat.reflectance = 0.0f;
+        whiteMat.specular = vec3(1.0f, 1.0f, 1.0f);
+        whiteMat.albedo = vec3(1.0f, 1.0f, 1.0f);
     }
 
     virtual const Material& GetMaterial(const vec3& pos) const override
@@ -102,13 +109,9 @@ struct TiledPlane : Plane
 
         if (white)
         {
-            mat.albedo = vec3(1.0f, 1.0f, 1.0f);
+            return whiteMat;
         }
-        else
-        {
-            mat.albedo = vec3(0.0f, 0.0f, 0.0f);
-        }
-        return mat;
+        return blackMat;
     }
     
     virtual vec3 GetSurfaceNormal(const vec3& pos) const

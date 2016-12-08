@@ -4,6 +4,9 @@
 #include "sceneobjects.h"
 #include "camera.h"
 
+#include <thread>
+#include <chrono>
+
 const int ImageWidth = 1024;
 const int ImageHeight = 768;
 const float FieldOfView = 60.0f;
@@ -40,7 +43,7 @@ void InitScene()
     mat.reflectance = 0.0f;
     mat.emissive = vec3(0.0f, 0.0f, 0.0f);
     sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-0.0f, 0.5f, 3.f), 0.5f));
-    
+
     // Green ball
     mat.albedo = vec3(1.0f, 1.0f, 1.0f);
     mat.specular = vec3(0.0f, 0.0f, 0.0f);
@@ -183,28 +186,47 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 
 void DrawScene(Bitmap* pBitmap)
 {
-    for (int y = 0; y < ImageHeight; y++)
+    std::vector<std::shared_ptr<std::thread>> threads;
+    int count = 2;
+    int WidthStep = int(ImageWidth / (float)count);
+    int HeightStep = int(ImageHeight / (float)count);
+    for (int segX = 0; segX < count; segX++)
     {
-        for (int x = 0; x < ImageWidth; x++)
+        for (int segY = 0; segY < count; segY++)
         {
-            const int numSamples = 4;
-            vec3 color{ 0.0f, 0.0f, 0.0f };
-            static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.7f), vec2(0.2f, 0.8f) };
-            for (auto i = 0; i < numSamples; i++)
+            auto pT = std::make_shared<std::thread>([&](int segmentX, int segmentY)
             {
-                vec2 sample(float(x) + patterns[i].x, float(y) + patterns[i].y);
+                for (int y = segmentY * HeightStep; y < ((segmentY * HeightStep) + HeightStep); y++)
+                {
+                    for (int x = segmentX * WidthStep; x < ((segmentX * WidthStep) + WidthStep); x++)
+                    {
+                        const int numSamples = 4;
+                        vec3 color{ 0.0f, 0.0f, 0.0f };
+                        static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.7f), vec2(0.2f, 0.8f) };
+                        for (auto i = 0; i < numSamples; i++)
+                        {
+                            vec2 sample(float(x) + patterns[i].x, float(y) + patterns[i].y);
 
-                auto ray = pCamera->GetWorldRay(sample);
-                color += TraceRay(pCamera->position, ray, 0);
-            }
-            color *= (1.0f / numSamples);
+                            auto ray = pCamera->GetWorldRay(sample);
+                            color += TraceRay(pCamera->position, ray, 0);
+                        }
+                        color *= (1.0f / numSamples);
 
-            // Color might have maxed out, so clamp.
-            color = color * 255.0f;
-            color = clamp(color, vec3(0.0f, 0.0f, 0.0f), vec3(255.0f, 255.0f, 255.0f));
+                        // Color might have maxed out, so clamp.
+                        color = color * 255.0f;
+                        color = clamp(color, vec3(0.0f, 0.0f, 0.0f), vec3(255.0f, 255.0f, 255.0f));
 
-            PutPixel(pBitmap, x, y, Color{ uint8_t(color.x), uint8_t(color.y),uint8_t(color.z) });
+                        PutPixel(pBitmap, x, y, Color{ uint8_t(color.x), uint8_t(color.y),uint8_t(color.z) });
+                    }
+                }
+            }, segX, segY);
+            threads.push_back(pT);
         }
+    }
+
+    for (auto& t : threads)
+    {
+        t->join();
     }
 }
 
@@ -216,11 +238,15 @@ void main(void* arg, void** args)
     ClearBitmap(pBitmap, col);
 
     InitScene();
+    auto start = std::chrono::steady_clock::now();
 
     DrawScene(pBitmap);
 
-    WriteBitmap(pBitmap, "image.bmp");
+    auto end = std::chrono::steady_clock::now();
+    auto diff = end - start;
 
+    std::cout << "Time: " << std::chrono::duration <double, std::milli> (diff).count() << " ms" << std::endl;
+    WriteBitmap(pBitmap, "image.bmp");
     DestroyBitmap(pBitmap);
 
     system("start image.bmp");
