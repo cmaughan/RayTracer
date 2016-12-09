@@ -126,6 +126,6 @@ struct TiledPlane : Plane
     
     virtual bool Intersects(const vec3& rayOrigin, const vec3& rayDir, float& distance) const override
     {
-        return glm::intersectRayPlane(rayOrigin, glm::normalize(rayDir), origin, normal, distance);
+        return glm::intersectRayPlane(rayOrigin, rayDir, origin, normal, distance);
     }
 };

@@ -7,6 +7,8 @@
 #include <thread>
 #include <chrono>
 
+#include "cmdparser\cmdparser.hpp"
+
 const int ImageWidth = 1024;
 const int ImageHeight = 768;
 const float FieldOfView = 60.0f;
@@ -70,7 +72,7 @@ SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance
     for (auto pObject : sceneObjects)
     {
         float distance;
-        if (pObject->Intersects(rayorig, glm::normalize(raydir), distance) &&
+        if (pObject->Intersects(rayorig, raydir, distance) &&
             nearestDistance > distance)
         {
             nearestObject = pObject.get();
@@ -184,44 +186,38 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
     return outputColor;
 }
 
-void DrawScene(Bitmap* pBitmap)
+void DrawScene(Bitmap* pBitmap, int partitions)
 {
     std::vector<std::shared_ptr<std::thread>> threads;
-    int count = 2;
-    int WidthStep = int(ImageWidth / (float)count);
-    int HeightStep = int(ImageHeight / (float)count);
-    for (int segX = 0; segX < count; segX++)
+    for (int i = 0; i < partitions; i++)
     {
-        for (int segY = 0; segY < count; segY++)
+        auto pT = std::make_shared<std::thread>([&](int offset)
         {
-            auto pT = std::make_shared<std::thread>([&](int segmentX, int segmentY)
+            for (int y = offset; y < ImageHeight; y += partitions)
             {
-                for (int y = segmentY * HeightStep; y < ((segmentY * HeightStep) + HeightStep); y++)
+                for (int x = 0; x < ImageWidth; x++)
                 {
-                    for (int x = segmentX * WidthStep; x < ((segmentX * WidthStep) + WidthStep); x++)
+                    const int numSamples = 4;
+                    vec3 color{ 0.0f, 0.0f, 0.0f };
+                    static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.7f), vec2(0.2f, 0.8f) };
+                    for (auto i = 0; i < numSamples; i++)
                     {
-                        const int numSamples = 4;
-                        vec3 color{ 0.0f, 0.0f, 0.0f };
-                        static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.7f), vec2(0.2f, 0.8f) };
-                        for (auto i = 0; i < numSamples; i++)
-                        {
-                            vec2 sample(float(x) + patterns[i].x, float(y) + patterns[i].y);
+                        vec2 sample(float(x) + patterns[i].x, float(y) + patterns[i].y);
 
-                            auto ray = pCamera->GetWorldRay(sample);
-                            color += TraceRay(pCamera->position, ray, 0);
-                        }
-                        color *= (1.0f / numSamples);
-
-                        // Color might have maxed out, so clamp.
-                        color = color * 255.0f;
-                        color = clamp(color, vec3(0.0f, 0.0f, 0.0f), vec3(255.0f, 255.0f, 255.0f));
-
-                        PutPixel(pBitmap, x, y, Color{ uint8_t(color.x), uint8_t(color.y),uint8_t(color.z) });
+                        auto ray = pCamera->GetWorldRay(sample);
+                        color += TraceRay(pCamera->position, ray, 0);
                     }
+                    color *= (1.0f / numSamples);
+
+                    // Color might have maxed out, so clamp.
+                    color = color * 255.0f;
+                    color = clamp(color, vec3(0.0f, 0.0f, 0.0f), vec3(255.0f, 255.0f, 255.0f));
+
+                    PutPixel(pBitmap, x, y, Color{ uint8_t(color.x), uint8_t(color.y),uint8_t(color.z) });
                 }
-            }, segX, segY);
-            threads.push_back(pT);
-        }
+            }
+        }, i);
+        threads.push_back(pT);
     }
 
     for (auto& t : threads)
@@ -230,19 +226,25 @@ void DrawScene(Bitmap* pBitmap)
     }
 }
 
-void main(void* arg, void** args)
+void main(int argc, char** args)
 {
+    cli::Parser parser(argc, args);
+    parser.set_optional<int>("p", "partitions", 2, "thread partitions 2 == 4, 3 == 9");
+    parser.run();
+
+    auto partitions = parser.get<int>("p");
+
     Bitmap* pBitmap = CreateBitmap(ImageWidth, ImageHeight);
 
     Color col{ 127, 127, 127 };
     ClearBitmap(pBitmap, col);
 
     InitScene();
-    auto start = std::chrono::steady_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
 
-    DrawScene(pBitmap);
+    DrawScene(pBitmap, partitions);
 
-    auto end = std::chrono::steady_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
     auto diff = end - start;
 
     std::cout << "Time: " << std::chrono::duration <double, std::milli> (diff).count() << " ms" << std::endl;

@@ -54,6 +54,7 @@ static inline Color& GetPixel(Bitmap* pBitmap, int x, int y)
 // Ignores out of bounds pixels
 static inline void PutPixel(Bitmap* pBitmap, int x, int y, const Color& color)
 {
+#ifdef DEBUG
     if (x >= pBitmap->width ||
         y >= pBitmap->height || 
         x < 0 ||
@@ -62,6 +63,7 @@ static inline void PutPixel(Bitmap* pBitmap, int x, int y, const Color& color)
         assert(!"PutPixel out of bounds");
         return;
     }
+#endif
     Color& col = pBitmap->pData[(pBitmap->width * y) + x];
     col.red = color.red;
     col.green = color.green;

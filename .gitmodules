@@ -1,0 +1,3 @@
+[submodule "raytracer_cpp/cmdparser"]
+	path = raytracer_cpp/cmdparser
+	url = https://github.com/cmaughan/CmdParser.git

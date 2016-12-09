@@ -5,3 +5,4 @@ Release
 *.db
 *.tmp
 *.ipch
+*.vspx
