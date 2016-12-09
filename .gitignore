@@ -6,3 +6,4 @@ Release
 *.tmp
 *.ipch
 *.vspx
+obj/**/*

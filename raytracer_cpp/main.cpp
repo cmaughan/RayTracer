@@ -186,7 +186,7 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
     return outputColor;
 }
 
-void DrawScene(Bitmap* pBitmap, int partitions)
+void DrawScene(Bitmap* pBitmap, int partitions, bool antialias)
 {
     std::vector<std::shared_ptr<std::thread>> threads;
     for (int i = 0; i < partitions; i++)
@@ -197,7 +197,7 @@ void DrawScene(Bitmap* pBitmap, int partitions)
             {
                 for (int x = 0; x < ImageWidth; x++)
                 {
-                    const int numSamples = 4;
+                    const int numSamples = antialias ? 4 : 1;
                     vec3 color{ 0.0f, 0.0f, 0.0f };
                     static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.7f), vec2(0.2f, 0.8f) };
                     for (auto i = 0; i < numSamples; i++)
@@ -230,9 +230,11 @@ void main(int argc, char** args)
 {
     cli::Parser parser(argc, args);
     parser.set_optional<int>("p", "partitions", 2, "thread partitions 2 == 4, 3 == 9");
+    parser.set_optional<int>("a", "antialiased", 1, "Antialias each pixel");
     parser.run();
 
     auto partitions = parser.get<int>("p");
+    auto antialias = parser.get<int>("a");
 
     Bitmap* pBitmap = CreateBitmap(ImageWidth, ImageHeight);
 
@@ -242,7 +244,7 @@ void main(int argc, char** args)
     InitScene();
     auto start = std::chrono::high_resolution_clock::now();
 
-    DrawScene(pBitmap, partitions);
+    DrawScene(pBitmap, partitions, antialias == 1 ? true : false);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto diff = end - start;
