@@ -46,11 +46,11 @@ void InitScene()
     mat.emissive = vec3(0.0f, 0.0f, 0.0f);
     sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-0.0f, 0.5f, 3.f), 0.5f));
 
-    // Green ball
+    // White ball
     mat.albedo = vec3(1.0f, 1.0f, 1.0f);
     mat.specular = vec3(0.0f, 0.0f, 0.0f);
     mat.reflectance = .0f;
-    mat.emissive = vec3(2.0f, 2.0f, 2.0f);
+    mat.emissive = vec3(1.0f, 1.0f, 1.0f);
     sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(2.8f, 0.8f, 2.0f), 0.8f));
 
     // White light
@@ -160,7 +160,7 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
         float diffuseI = 0.0f;
         float specI = 0.0f;
 
-        diffuseI = dot(normal, emitterDir);
+        diffuseI = dot(normal, emitterDir);/// / (bestDistance * bestDistance);
 
         if (diffuseI > 0.0f)
         {
@@ -169,6 +169,8 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
             {
                 specI = pow(specI, 10);
                 specI = std::max(0.0f, specI);
+
+                //specI /= (bestDistance * bestDistance);
             }
             else
             {
