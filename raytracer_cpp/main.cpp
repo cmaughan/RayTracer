@@ -50,7 +50,7 @@ void InitScene()
     mat.albedo = vec3(1.0f, 1.0f, 1.0f);
     mat.specular = vec3(0.0f, 0.0f, 0.0f);
     mat.reflectance = .0f;
-    mat.emissive = vec3(1.0f, 1.0f, 1.0f);
+    mat.emissive = vec3(1.0f, 1.0f, 0.0f);
     sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(2.8f, 0.8f, 2.0f), 0.8f));
 
     // White light
