@@ -23,19 +23,20 @@ using namespace Gdiplus;
 
 int ImageWidth = 1024;
 int ImageHeight = 768;
-int partitions = 4;
-int antialias = 0;
 const float FieldOfView = 60.0f;
 HWND hWnd;
 
-#define MAX_DEPTH 3
+#define MAX_DEPTH 5
 
 std::shared_ptr<Bitmap> spBitmap;
 std::vector<glm::u8vec4> buffer;
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
 std::shared_ptr<Camera> pCamera;
 
-void DrawScene();
+float cameraAngle = 0.0f;
+float cameraDistance = 8.0f;
+
+void DrawScene(int partitions, bool antialias);
 void CopyTargetToBitmap()
 {
     if (spBitmap)
@@ -95,8 +96,19 @@ void InitMaps()
 
 void InitCamera()
 {
-    pCamera = std::make_shared<Camera>(vec3(0.0f, 6.0f, 8.0f),      // Where the camera is
-        vec3(0.0f, -.8f, -1.0f),    // The point it is looking at
+    glm::vec3 lookAt = vec3(0.0f, 0.0, 0.0f);
+
+    glm::vec3 pos;
+    pos.x = glm::sin(glm::radians(cameraAngle)) * cameraDistance;
+    pos.z = glm::cos(glm::radians(cameraAngle)) * cameraDistance;
+    pos.y = 5.0f;
+    pos = lookAt + pos;
+
+    glm::vec3 dir = lookAt - pos;
+    dir = glm::normalize(dir);
+
+    pCamera = std::make_shared<Camera>(pos,      // Where the camera is
+        dir,    // The point it is looking at
         FieldOfView,                // The field of view of the 'lens'
         ImageWidth, ImageHeight);   // The size in pixels of the view plane
 }
@@ -124,13 +136,13 @@ void InitScene()
     mat.specular = vec3(0.0f, 0.0f, 1.0f);
     mat.reflectance = 0.0f;
     mat.emissive = vec3(0.0f, 0.0f, 0.0f);
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-0.0f, 0.5f, 3.f), 0.5f));
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(0.0f, 0.5f, 3.f), 0.5f));
 
     // White ball
     mat.albedo = vec3(1.0f, 1.0f, 1.0f);
     mat.specular = vec3(0.0f, 0.0f, 0.0f);
     mat.reflectance = .0f;
-    mat.emissive = vec3(1.0f, 1.0f, 1.0f);
+    mat.emissive = vec3(0.0f, 0.8f, 0.8f);
     sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(2.8f, 0.8f, 2.0f), 0.8f));
 
     // White light
@@ -270,7 +282,7 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
     return outputColor;
 }
 
-void DrawScene()
+void DrawScene(int partitions, bool antialias )
 {
     if (!spBitmap)
     {
@@ -346,7 +358,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
     {
     case WM_CHAR:
     {
-        if (wParam == 's')
+        if (wParam == 'o')
         {
             step = true;
         }
@@ -356,6 +368,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         }
         else if (wParam == ' ')
         {
+            step = true;
+        }
+        else if (wParam == 'r')
+        {
+            cameraAngle += 1.0f;
+            InitCamera();
+            step = true;
+        }
+        else if (wParam == 'f')
+        {
+            cameraAngle -= 1.0f;
+            InitCamera();
+            step = true;
+        }
+        else if (wParam == 'w')
+        {
+            cameraDistance += .5f;
+            InitCamera();
+            step = true;
+        }
+        else if (wParam == 's')
+        {
+            cameraDistance -= .5f;
+            InitCamera();
             step = true;
         }
     }
@@ -457,16 +493,13 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     InitCamera();
     step = true;
 
-    /*
-    cli::Parser parser(argc, args);
+    cli::Parser parser(__argc, __argv);
     parser.set_optional<int>("p", "partitions", 2, "thread partitions 2 == 4, 3 == 9");
-    parser.set_optional<int>("a", "antialiased", 1, "Antialias each pixel");
+    parser.set_optional<int>("a", "antialiased", 0, "Antialias each pixel");
     parser.run();
-    */
 
-    //auto partitions = parser.get<int>("p");
-    //auto antialias = parser.get<int>("a");
-
+    auto partitions = parser.get<int>("p");
+    auto antialias = parser.get<int>("a") == 0 ? false : true;
 
     Color col{ 127, 127, 127 };
 
@@ -486,7 +519,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
             if (step)
             {
                 OnSizeChanged();
-                DrawScene();
+                DrawScene(partitions, antialias);
             }
         }
     }
