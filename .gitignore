@@ -1,6 +1,7 @@
 Debug
 Release
 *.bmp
+*.png
 *.opendb
 *.db
 *.tmp

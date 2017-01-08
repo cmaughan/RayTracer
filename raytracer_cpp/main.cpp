@@ -13,7 +13,7 @@ const int ImageWidth = 1024;
 const int ImageHeight = 768;
 const float FieldOfView = 60.0f;
 
-#define MAX_DEPTH 3
+#define MAX_DEPTH 5
 
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
 std::shared_ptr<Camera> pCamera;
@@ -58,7 +58,7 @@ void InitScene()
     mat.specular = vec3(0.0f, 0.0f, 0.0f);
     mat.reflectance = 0.0f;
     mat.emissive = vec3(1.0f, 1.0f, 1.0f);
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-10.8f, 6.4f, 10.0f), 0.4f));
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-10.8f, 8.4f, 10.0f), 0.4f));
 
     sceneObjects.push_back(std::make_shared<TiledPlane>(vec3(0.0f, 0.0f, 0.0f), normalize(vec3(0.0f, 1.0f, 0.0f))));
 }

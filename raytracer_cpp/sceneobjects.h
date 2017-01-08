@@ -94,11 +94,11 @@ struct TiledPlane : Plane
     {
         normal = n;
         origin = o;
-        blackMat.reflectance = 0.0f;
-        blackMat.specular = vec3(1.0f, 1.0f, 1.0f);
+        blackMat.reflectance = 0.6f;
+        blackMat.specular = vec3(0.0f, 0.0f, 0.0f);
         blackMat.albedo = vec3(0.0f, 0.0f, 0.0f);
 
-        whiteMat.reflectance = 0.0f;
+        whiteMat.reflectance = 0.6f;
         whiteMat.specular = vec3(1.0f, 1.0f, 1.0f);
         whiteMat.albedo = vec3(1.0f, 1.0f, 1.0f);
     }

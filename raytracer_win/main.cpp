@@ -31,7 +31,7 @@ HWND hWnd;
 #define MAX_DEPTH 3
 
 std::shared_ptr<Bitmap> spBitmap;
-std::vector<glm::u8vec4> buffers[1];
+std::vector<glm::u8vec4> buffer;
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
 std::shared_ptr<Camera> pCamera;
 
@@ -40,7 +40,7 @@ void CopyTargetToBitmap()
 {
     if (spBitmap)
     {
-        auto pData = &buffers[0][0];
+        auto pData = &buffer[0];
 
         BitmapData writeData;
         Rect lockRect(0, 0, ImageWidth, ImageHeight);
@@ -50,9 +50,9 @@ void CopyTargetToBitmap()
         {
             for (auto x = 0; x < int(writeData.Width); x++)
             {
-                uint32_t* pTarget = (uint32_t*)((uint8_t*)writeData.Scan0 + (y * writeData.Stride) + (x * 4));
-                auto pSource = (pData + uint32_t(y * ImageWidth) + uint32_t(x));
-                *pTarget = *(uint32_t*)pSource;
+                glm::u8vec4* pTarget = (glm::u8vec4*)((uint8_t*)writeData.Scan0 + (y * writeData.Stride) + (x * 4));
+                auto& source = buffer[(y * ImageWidth) + x];
+                *pTarget = source;
             }
         }
 
@@ -71,33 +71,40 @@ VOID OnPaint(HDC hdc)
     graphics.SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
     graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
 
-    if (!pause || step)
-    {
-        DrawScene();
-        CopyTargetToBitmap();
-        step = false;
-    }
-
     RectF dest;
     dest.X = 0;
     dest.Y = 0;
     dest.Width = float(ImageWidth);
     dest.Height = float(ImageHeight);
-    graphics.DrawImage(spBitmap.get(), dest, 0.0f, 0.0f, float(ImageWidth), float(ImageHeight), Unit(UnitPixel));
+    if (spBitmap)
+    {
+        graphics.DrawImage(spBitmap.get(), dest, 0.0f, 0.0f, float(ImageWidth), float(ImageHeight), Unit(UnitPixel));
+    }
+    else
+    {
+        graphics.Clear(Color::Beige);
+    }
 }
 
 void InitMaps()
 {
     spBitmap = std::make_shared<Bitmap>(ImageWidth, ImageHeight, PixelFormat32bppPARGB);
-    buffers[0].resize(ImageWidth * ImageHeight);
+    buffer.resize(ImageWidth * ImageHeight);
+    step = true;
 }
 
-void InitScene()
+void InitCamera()
 {
     pCamera = std::make_shared<Camera>(vec3(0.0f, 6.0f, 8.0f),      // Where the camera is
         vec3(0.0f, -.8f, -1.0f),    // The point it is looking at
         FieldOfView,                // The field of view of the 'lens'
         ImageWidth, ImageHeight);   // The size in pixels of the view plane
+}
+
+void InitScene()
+{
+    sceneObjects.clear();
+
 
     // Red ball
     Material mat;
@@ -134,6 +141,8 @@ void InitScene()
     sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-10.8f, 6.4f, 10.0f), 0.4f));
 
     sceneObjects.push_back(std::make_shared<TiledPlane>(vec3(0.0f, 0.0f, 0.0f), normalize(vec3(0.0f, 1.0f, 0.0f))));
+
+    InitCamera();
 }
 
 SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance)
@@ -263,6 +272,10 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 
 void DrawScene()
 {
+    if (!spBitmap)
+    {
+        return;
+    }
     std::vector<std::shared_ptr<std::thread>> threads;
     for (int i = 0; i < partitions; i++)
     {
@@ -288,9 +301,7 @@ void DrawScene()
                     color = color * 255.0f;
                     color = clamp(color, vec3(0.0f, 0.0f, 0.0f), vec3(255.0f, 255.0f, 255.0f));
 
-                    buffers[0][(y * ImageWidth) + (x)].x = glm::u8(color.x);
-                    buffers[0][(y * ImageWidth) + (x)].y = glm::u8(color.y);
-                    buffers[0][(y * ImageWidth) + (x)].z = glm::u8(color.z);
+                    buffer[(y * ImageWidth) + (x)] = glm::u8vec4(color, 255.0f);
                 }
             }
         }, i);
@@ -300,6 +311,28 @@ void DrawScene()
     for (auto& t : threads)
     {
         t->join();
+    }
+    CopyTargetToBitmap();
+    step = false;
+    InvalidateRect(hWnd, NULL, TRUE);
+}
+
+void OnSizeChanged()
+{
+    RECT rc;
+    GetClientRect(hWnd, &rc);
+
+    int x = rc.right - rc.left;
+    int y = rc.bottom - rc.top;
+    if ((x != ImageWidth &&
+        y != ImageHeight) ||
+        spBitmap == nullptr)
+    {
+        ImageWidth = x;
+        ImageHeight = y;
+        InitMaps();
+        InitCamera();
+        step = true;
     }
 }
 
@@ -325,17 +358,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         {
             step = true;
         }
-        InvalidateRect(hWnd, NULL, TRUE);
+    }
+    break;
+
+    case WM_SYSCOMMAND:
+    {
+        switch (LOWORD(wParam))
+        {
+        case SC_MAXIMIZE:
+            spBitmap.reset();
+            step = true;
+            break;
+        default:
+            break;
+        }
     }
     break;
 
     case WM_SIZE:
     {
-        ImageWidth = LOWORD(lParam);
-        ImageHeight = HIWORD(lParam);
-        InitMaps();
+        spBitmap.reset();
+        step = true;
     }
-    return 0;
+    break;
+     
     case WM_ERASEBKGND:
         return TRUE;
 
@@ -375,7 +421,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
     wndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
     wndClass.lpszMenuName = NULL;
-    wndClass.lpszClassName = TEXT("Maze");
+    wndClass.lpszClassName = TEXT("RayTracer");
 
     RegisterClass(&wndClass);
 
@@ -385,8 +431,8 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     int nScreenHeight = GetSystemMetrics(SM_CYSCREEN);
 
     hWnd = CreateWindow(
-        TEXT("Maze"),   // window class name
-        TEXT("Maze"),  // window caption
+        TEXT("RayTracer"),   // window class name
+        TEXT("RayTracer"),  // window caption
         WS_OVERLAPPEDWINDOW,      // window style
         (nScreenWidth / 2) - (WindowSize / 2),            // initial x position
         (nScreenHeight / 2) - (WindowSize / 2),            // initial y position
@@ -397,12 +443,19 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
         hInstance,                // program instance handle
         NULL);                    // creation parameters
 
-    InitMaps();
-    InitScene();
     ShowWindow(hWnd, iCmdShow);
     UpdateWindow(hWnd);
 
     srand(int(std::chrono::high_resolution_clock::now().time_since_epoch().count()));
+
+    RECT rc;
+    GetClientRect(hWnd, &rc);
+    ImageWidth = rc.right - rc.left;
+    ImageHeight = rc.bottom - rc.top;
+    InitMaps();
+    InitScene();
+    InitCamera();
+    step = true;
 
     /*
     cli::Parser parser(argc, args);
@@ -417,10 +470,25 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
 
     Color col{ 127, 127, 127 };
 
-    while (GetMessage(&msg, NULL, 0, 0))
+    msg.message = 0;
+    while(WM_QUIT != msg.message)
     {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        if(PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+        {
+            //Translate message
+            TranslateMessage(&msg);
+
+            //Dispatch message
+            DispatchMessage(&msg);
+        }
+        else
+        {
+            if (step)
+            {
+                OnSizeChanged();
+                DrawScene();
+            }
+        }
     }
 
     GdiplusShutdown(gdiplusToken);
