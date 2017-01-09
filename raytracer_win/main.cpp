@@ -29,7 +29,7 @@ HWND hWnd;
 #define MAX_DEPTH 5
 
 std::shared_ptr<Bitmap> spBitmap;
-std::vector<glm::u8vec4> buffer;
+std::vector<glm::vec4> buffer;
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
 std::shared_ptr<Camera> pCamera;
 
@@ -53,7 +53,8 @@ void CopyTargetToBitmap()
             {
                 glm::u8vec4* pTarget = (glm::u8vec4*)((uint8_t*)writeData.Scan0 + (y * writeData.Stride) + (x * 4));
                 auto& source = buffer[(y * ImageWidth) + x];
-                *pTarget = source;
+                auto val = glm::u8vec4(glm::clamp(source, glm::vec4(0.0f), glm::vec4(1.0f)) * 255.0f);
+                *pTarget = val;
             }
         }
 
@@ -308,11 +309,7 @@ void DrawScene(int partitions, bool antialias )
                     }
                     color *= (1.0f / numSamples);
 
-                    // Color might have maxed out, so clamp.
-                    color = color * 255.0f;
-                    color = clamp(color, vec3(0.0f, 0.0f, 0.0f), vec3(255.0f, 255.0f, 255.0f));
-
-                    buffer[(y * ImageWidth) + (x)] = glm::u8vec4(color, 255.0f);
+                    buffer[(y * ImageWidth) + (x)] = glm::vec4(color, 1.0f);
                 }
             }
         }, i);
