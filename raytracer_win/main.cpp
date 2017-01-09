@@ -254,17 +254,16 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
         float diffuseI = 0.0f;
         float specI = 0.0f;
 
-        diffuseI = dot(normal, emitterDir);/// / (bestDistance * bestDistance);
+        diffuseI = dot(normal, emitterDir);// / (bestDistance * .1f);
 
         if (diffuseI > 0.0f)
         {
-            specI = dot(reflect, emitterDir);
+            specI = dot(reflect, emitterDir) ;
             if (specI > 0.0f)
             {
                 specI = pow(specI, 10);
                 specI = std::max(0.0f, specI);
 
-                //specI /= (bestDistance * bestDistance);
             }
             else
             {
@@ -384,13 +383,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         }
         else if (wParam == 'w')
         {
-            cameraDistance += .5f;
+            cameraDistance -= .5f;
             InitCamera();
             step = true;
         }
         else if (wParam == 's')
         {
-            cameraDistance -= .5f;
+            cameraDistance += .5f;
             InitCamera();
             step = true;
         }
