@@ -295,7 +295,8 @@ void DrawScene(int partitions, bool antialias)
 
     const float k1 = float(currentSample);
     const float k2 = 1.f / (k1 + 1.f);
-    glm::vec2 sample = glm::gaussRand(glm::vec2(0.5f), glm::vec2(0.5f));
+    glm::vec2 sample = glm::linearRand(glm::vec2(0.0f), glm::vec2(1.0f));
+    //glm::vec2 sample = glm::gaussRand(glm::vec2(0.5f), glm::vec2(0.5f));
     for (int i = 0; i < partitions; i++)
     {
         auto pT = std::make_shared<std::thread>([&](int offset)
