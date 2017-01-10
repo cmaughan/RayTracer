@@ -45,16 +45,18 @@ void CopyTargetToBitmap()
 
         BitmapData writeData;
         Rect lockRect(0, 0, ImageWidth, ImageHeight);
-        spBitmap->LockBits(&lockRect, ImageLockModeWrite, PixelFormat32bppPARGB, &writeData);
+        spBitmap->LockBits(&lockRect, ImageLockModeWrite, PixelFormat32bppARGB, &writeData);
 
         for (int y = 0; y < int(writeData.Height); y++)
         {
             for (auto x = 0; x < int(writeData.Width); x++)
             {
                 glm::u8vec4* pTarget = (glm::u8vec4*)((uint8_t*)writeData.Scan0 + (y * writeData.Stride) + (x * 4));
-                auto& source = buffer[(y * ImageWidth) + x];
-                auto val = glm::u8vec4(glm::clamp(source, glm::vec4(0.0f), glm::vec4(1.0f)) * 255.0f);
-                *pTarget = val;
+                glm::vec4 source = buffer[(y * ImageWidth) + x];
+                source = glm::clamp(source, glm::vec4(0.0f), glm::vec4(1.0f));
+
+                source = glm::u8vec4(source * 255.0f);
+                *pTarget = source;
             }
         }
 
@@ -63,7 +65,8 @@ void CopyTargetToBitmap()
 }
 
 bool pause = true;
-bool step = true;
+bool sizeChanged = true;
+int currentSample = 0;
 
 VOID OnPaint(HDC hdc)
 {
@@ -91,8 +94,8 @@ VOID OnPaint(HDC hdc)
 void InitMaps()
 {
     spBitmap = std::make_shared<Bitmap>(ImageWidth, ImageHeight, PixelFormat32bppPARGB);
-    buffer.resize(ImageWidth * ImageHeight);
-    step = true;
+    buffer.resize(ImageWidth * ImageHeight, glm::vec4(0));
+    currentSample = 0;
 }
 
 void InitCamera()
@@ -259,7 +262,7 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 
         if (diffuseI > 0.0f)
         {
-            specI = dot(reflect, emitterDir) ;
+            specI = dot(reflect, emitterDir);
             if (specI > 0.0f)
             {
                 specI = pow(specI, 10);
@@ -282,13 +285,17 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
     return outputColor;
 }
 
-void DrawScene(int partitions, bool antialias )
+void DrawScene(int partitions, bool antialias)
 {
     if (!spBitmap)
     {
         return;
     }
     std::vector<std::shared_ptr<std::thread>> threads;
+
+    const float k1 = float(currentSample);
+    const float k2 = 1.f / (k1 + 1.f);
+    glm::vec2 sample = glm::gaussRand(glm::vec2(0.5f), glm::vec2(0.5f));
     for (int i = 0; i < partitions; i++)
     {
         auto pT = std::make_shared<std::thread>([&](int offset)
@@ -297,19 +304,16 @@ void DrawScene(int partitions, bool antialias )
             {
                 for (int x = 0; x < ImageWidth; x++)
                 {
-                    const int numSamples = antialias ? 4 : 1;
                     vec3 color{ 0.0f, 0.0f, 0.0f };
-                    static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.7f), vec2(0.2f, 0.8f) };
-                    for (auto i = 0; i < numSamples; i++)
-                    {
-                        vec2 sample(float(x) + patterns[i].x, float(y) + patterns[i].y);
+                    auto offset = sample + glm::vec2(x, y);
 
-                        auto ray = pCamera->GetWorldRay(sample);
-                        color += TraceRay(pCamera->position, ray, 0);
-                    }
-                    color *= (1.0f / numSamples);
+                    auto ray = pCamera->GetWorldRay(offset);
+                    color += TraceRay(pCamera->position, ray, 0);
 
-                    buffer[(y * ImageWidth) + (x)] = glm::vec4(color, 1.0f);
+                    auto index = (y * ImageWidth) + x;
+                    auto& bufferVal = buffer[index];
+
+                    bufferVal = ((bufferVal * k1) + glm::vec4(color, 1.0f)) * k2;
                 }
             }
         }, i);
@@ -320,8 +324,8 @@ void DrawScene(int partitions, bool antialias )
     {
         t->join();
     }
+    currentSample++;
     CopyTargetToBitmap();
-    step = false;
     InvalidateRect(hWnd, NULL, TRUE);
 }
 
@@ -340,7 +344,7 @@ void OnSizeChanged()
         ImageHeight = y;
         InitMaps();
         InitCamera();
-        step = true;
+        currentSample = 0;
     }
 }
 
@@ -356,7 +360,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
     {
         if (wParam == 'o')
         {
-            step = true;
+            currentSample = 0;
         }
         else if (wParam == 'p')
         {
@@ -364,31 +368,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         }
         else if (wParam == ' ')
         {
-            step = true;
+            currentSample = 0;
         }
         else if (wParam == 'r')
         {
             cameraAngle += 1.0f;
             InitCamera();
-            step = true;
+            currentSample = 0;
         }
         else if (wParam == 'f')
         {
             cameraAngle -= 1.0f;
             InitCamera();
-            step = true;
+            currentSample = 0;
         }
         else if (wParam == 'w')
         {
             cameraDistance -= .5f;
             InitCamera();
-            step = true;
+            currentSample = 0;
         }
         else if (wParam == 's')
         {
             cameraDistance += .5f;
             InitCamera();
-            step = true;
+            currentSample = 0;
         }
     }
     break;
@@ -399,7 +403,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         {
         case SC_MAXIMIZE:
             spBitmap.reset();
-            step = true;
+            currentSample = 0;
             break;
         default:
             break;
@@ -410,10 +414,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
     case WM_SIZE:
     {
         spBitmap.reset();
-        step = true;
+        currentSample = 0;
     }
     break;
-     
+
     case WM_ERASEBKGND:
         return TRUE;
 
@@ -487,7 +491,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     InitMaps();
     InitScene();
     InitCamera();
-    step = true;
+    currentSample = 0;
 
     cli::Parser parser(__argc, __argv);
     parser.set_optional<int>("p", "partitions", 2, "thread partitions 2 == 4, 3 == 9");
@@ -500,9 +504,9 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     Color col{ 127, 127, 127 };
 
     msg.message = 0;
-    while(WM_QUIT != msg.message)
+    while (WM_QUIT != msg.message)
     {
-        if(PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
+        if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
         {
             //Translate message
             TranslateMessage(&msg);
@@ -512,11 +516,12 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
         }
         else
         {
-            if (step)
+            if (spBitmap == nullptr)
             {
                 OnSizeChanged();
-                DrawScene(partitions, antialias);
             }
+            DrawScene(partitions, antialias);
+            SetWindowTextA(hWnd, std::to_string(currentSample).c_str());
         }
     }
 
