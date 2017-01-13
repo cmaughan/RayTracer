@@ -64,7 +64,8 @@ void CopyTargetToBitmap()
     }
 }
 
-bool pause = true;
+bool pause = false;
+bool step = true;
 bool sizeChanged = true;
 int currentSample = 0;
 
@@ -98,29 +99,10 @@ void InitMaps()
     currentSample = 0;
 }
 
-void InitCamera()
-{
-    glm::vec3 lookAt = vec3(0.0f, 0.0, 0.0f);
-
-    glm::vec3 pos;
-    pos.x = glm::sin(glm::radians(cameraAngle)) * cameraDistance;
-    pos.z = glm::cos(glm::radians(cameraAngle)) * cameraDistance;
-    pos.y = 5.0f;
-    pos = lookAt + pos;
-
-    glm::vec3 dir = lookAt - pos;
-    dir = glm::normalize(dir);
-
-    pCamera = std::make_shared<Camera>(pos,      // Where the camera is
-        dir,    // The point it is looking at
-        FieldOfView,                // The field of view of the 'lens'
-        ImageWidth, ImageHeight);   // The size in pixels of the view plane
-}
 
 void InitScene()
 {
     sceneObjects.clear();
-
 
     // Red ball
     Material mat;
@@ -158,7 +140,10 @@ void InitScene()
 
     sceneObjects.push_back(std::make_shared<TiledPlane>(vec3(0.0f, 0.0f, 0.0f), normalize(vec3(0.0f, 1.0f, 0.0f))));
 
-    InitCamera();
+    pCamera = std::make_shared<Camera>();
+    pCamera->SetFocalPoint(vec3(0.0f));
+    pCamera->SetPosition(vec3(0.0f, 5.0f, cameraDistance));
+
 }
 
 SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance)
@@ -291,6 +276,11 @@ void DrawScene(int partitions, bool antialias)
     {
         return;
     }
+
+    pCamera->PreRender();
+
+    srand(currentSample);
+
     std::vector<std::shared_ptr<std::thread>> threads;
 
     const float k1 = float(currentSample);
@@ -303,13 +293,13 @@ void DrawScene(int partitions, bool antialias)
         {
             for (int y = offset; y < ImageHeight; y += partitions)
             {
-                for (int x = 0; x < ImageWidth; x++)
+                for (int x = 0; x < ImageWidth; x += 1)
                 {
                     vec3 color{ 0.0f, 0.0f, 0.0f };
                     auto offset = sample + glm::vec2(x, y);
 
                     auto ray = pCamera->GetWorldRay(offset);
-                    color += TraceRay(pCamera->position, ray, 0);
+                    color += TraceRay(pCamera->GetPosition(), ray, 0);
 
                     auto index = (y * ImageWidth) + x;
                     auto& bufferVal = buffer[index];
@@ -337,16 +327,15 @@ void OnSizeChanged()
 
     int x = rc.right - rc.left;
     int y = rc.bottom - rc.top;
-    if ((x != ImageWidth &&
-        y != ImageHeight) ||
-        spBitmap == nullptr)
-    {
-        ImageWidth = x;
-        ImageHeight = y;
-        InitMaps();
-        InitCamera();
-        currentSample = 0;
-    }
+
+    ImageWidth = x;
+    ImageHeight = y;
+
+    InitMaps();
+
+    pCamera->SetFilmSize(float(ImageWidth), float(ImageHeight));
+
+    currentSample = 0;
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
@@ -369,31 +358,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         }
         else if (wParam == ' ')
         {
-            currentSample = 0;
+            step = true;
         }
         else if (wParam == 'r')
         {
-            cameraAngle += 1.0f;
-            InitCamera();
+            pCamera->Orbit(1.0f);
             currentSample = 0;
+            step = true;
         }
         else if (wParam == 'f')
         {
-            cameraAngle -= 1.0f;
-            InitCamera();
+            pCamera->Orbit(-1.0f);
             currentSample = 0;
+            step = true;
         }
         else if (wParam == 'w')
         {
-            cameraDistance -= .5f;
-            InitCamera();
+            pCamera->Dolly(.5f);
             currentSample = 0;
+            step = true;
         }
         else if (wParam == 's')
         {
-            cameraDistance += .5f;
-            InitCamera();
+            pCamera->Dolly(-.5f);
             currentSample = 0;
+            step = true;
         }
     }
     break;
@@ -404,7 +393,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         {
         case SC_MAXIMIZE:
             spBitmap.reset();
-            currentSample = 0;
             break;
         default:
             break;
@@ -415,7 +403,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
     case WM_SIZE:
     {
         spBitmap.reset();
-        currentSample = 0;
     }
     break;
 
@@ -483,16 +470,11 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     ShowWindow(hWnd, iCmdShow);
     UpdateWindow(hWnd);
 
-    srand(int(std::chrono::high_resolution_clock::now().time_since_epoch().count()));
-
-    RECT rc;
-    GetClientRect(hWnd, &rc);
-    ImageWidth = rc.right - rc.left;
-    ImageHeight = rc.bottom - rc.top;
-    InitMaps();
+#ifdef _DEBUG
+    pause = true;
+    step = true;
+#endif
     InitScene();
-    InitCamera();
-    currentSample = 0;
 
     cli::Parser parser(__argc, __argv);
     parser.set_optional<int>("p", "partitions", 2, "thread partitions 2 == 4, 3 == 9");
@@ -520,9 +502,17 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
             if (spBitmap == nullptr)
             {
                 OnSizeChanged();
+                DrawScene(partitions, antialias);
             }
-            DrawScene(partitions, antialias);
+            else
+            {
+                if (!pause || step)
+                {
+                    DrawScene(partitions, antialias);
+                }
+            }
             SetWindowTextA(hWnd, std::to_string(currentSample).c_str());
+            step = false;
         }
     }
 
