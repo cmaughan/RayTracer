@@ -18,13 +18,12 @@ const float FieldOfView = 60.0f;
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
 std::shared_ptr<Camera> pCamera;
 
-
 void InitScene()
 {
-    pCamera = std::make_shared<Camera>(vec3(0.0f, 6.0f, 8.0f),      // Where the camera is
-        vec3(0.0f, -.8f, -1.0f),    // The point it is looking at
-        FieldOfView,                // The field of view of the 'lens'
-        ImageWidth, ImageHeight);   // The size in pixels of the view plane
+    pCamera = std::make_shared<Camera>(vec3(0.0f, 6.0f, 8.0f),   // Where the camera is
+                                       vec3(0.0f, -.8f, -1.0f),  // The point it is looking at
+                                       FieldOfView,              // The field of view of the 'lens'
+                                       ImageWidth, ImageHeight); // The size in pixels of the view plane
 
     // Red ball
     Material mat;
@@ -63,9 +62,9 @@ void InitScene()
     sceneObjects.push_back(std::make_shared<TiledPlane>(vec3(0.0f, 0.0f, 0.0f), normalize(vec3(0.0f, 1.0f, 0.0f))));
 }
 
-SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance)
+SceneObject *FindNearestObject(vec3 rayorig, vec3 raydir, float &nearestDistance)
 {
-    SceneObject* nearestObject = nullptr;
+    SceneObject *nearestObject = nullptr;
     nearestDistance = std::numeric_limits<float>::max();
 
     // find intersection of this ray with the sphere in the scene
@@ -82,21 +81,21 @@ SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance
     return nearestObject;
 }
 
-vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
+vec3 TraceRay(const vec3 &rayorig, const vec3 &raydir, const int depth)
 {
-    const SceneObject* nearestObject = nullptr;
+    const SceneObject *nearestObject = nullptr;
     float distance;
     nearestObject = FindNearestObject(rayorig, raydir, distance);
 
     if (!nearestObject)
     {
-        return vec3{ 0.1f, 0.1f, 0.1f };
+        return vec3{0.1f, 0.1f, 0.1f};
     }
     vec3 pos = rayorig + (raydir * distance);
     vec3 normal = nearestObject->GetSurfaceNormal(pos);
-    vec3 outputColor{ 0.0f, 0.0f, 0.0f };
+    vec3 outputColor{0.0f, 0.0f, 0.0f};
 
-    const Material& material = nearestObject->GetMaterial(pos);
+    const Material &material = nearestObject->GetMaterial(pos);
 
     vec3 reflect = glm::normalize(glm::reflect(raydir, normal));
 
@@ -110,14 +109,14 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
         outputColor = (reflectColor * material.reflectance);
     }
     // For every emitter, gather the light
-    for (auto& emitterObj : sceneObjects)
+    for (auto &emitterObj : sceneObjects)
     {
         vec3 emitterDir = emitterObj->GetRayFrom(pos);
 
         float bestDistance = std::numeric_limits<float>::max();
-        SceneObject* pOccluder = nullptr;
-        const Material* pEmissiveMat = nullptr;
-        for (auto& occluder : sceneObjects)
+        SceneObject *pOccluder = nullptr;
+        const Material *pEmissiveMat = nullptr;
+        for (auto &occluder : sceneObjects)
         {
             if (occluder->Intersects(pos + (emitterDir * 0.001f), emitterDir, distance))
             {
@@ -160,7 +159,7 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
         float diffuseI = 0.0f;
         float specI = 0.0f;
 
-        diffuseI = dot(normal, emitterDir);/// / (bestDistance * bestDistance);
+        diffuseI = dot(normal, emitterDir); /// / (bestDistance * bestDistance);
 
         if (diffuseI > 0.0f)
         {
@@ -188,20 +187,19 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
     return outputColor;
 }
 
-void DrawScene(Bitmap* pBitmap, int partitions, bool antialias)
+void DrawScene(Bitmap *pBitmap, int partitions, bool antialias)
 {
     std::vector<std::shared_ptr<std::thread>> threads;
     for (int i = 0; i < partitions; i++)
     {
-        auto pT = std::make_shared<std::thread>([&](int offset)
-        {
+        auto pT = std::make_shared<std::thread>([&](int offset) {
             for (int y = offset; y < ImageHeight; y += partitions)
             {
                 for (int x = 0; x < ImageWidth; x++)
                 {
                     const int numSamples = antialias ? 4 : 1;
-                    vec3 color{ 0.0f, 0.0f, 0.0f };
-                    static vec2 patterns[4]{ vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.7f), vec2(0.2f, 0.8f) };
+                    vec3 color{0.0f, 0.0f, 0.0f};
+                    static vec2 patterns[4]{vec2(0.1f, 0.2f), vec2(0.6f, 0.5f), vec2(0.8f, 0.7f), vec2(0.2f, 0.8f)};
                     for (auto i = 0; i < numSamples; i++)
                     {
                         vec2 sample(float(x) + patterns[i].x, float(y) + patterns[i].y);
@@ -215,20 +213,21 @@ void DrawScene(Bitmap* pBitmap, int partitions, bool antialias)
                     color = color * 255.0f;
                     color = clamp(color, vec3(0.0f, 0.0f, 0.0f), vec3(255.0f, 255.0f, 255.0f));
 
-                    PutPixel(pBitmap, x, y, Color{ uint8_t(color.x), uint8_t(color.y),uint8_t(color.z) });
+                    PutPixel(pBitmap, x, y, Color{uint8_t(color.x), uint8_t(color.y), uint8_t(color.z)});
                 }
             }
-        }, i);
+        },
+                                                i);
         threads.push_back(pT);
     }
 
-    for (auto& t : threads)
+    for (auto &t : threads)
     {
         t->join();
     }
 }
 
-void main(int argc, char** args)
+void main(int argc, char **args)
 {
     cli::Parser parser(argc, args);
     parser.set_optional<int>("p", "partitions", 2, "thread partitions 2 == 4, 3 == 9");
@@ -238,9 +237,9 @@ void main(int argc, char** args)
     auto partitions = parser.get<int>("p");
     auto antialias = parser.get<int>("a");
 
-    Bitmap* pBitmap = CreateBitmap(ImageWidth, ImageHeight);
+    Bitmap *pBitmap = CreateBitmap(ImageWidth, ImageHeight);
 
-    Color col{ 127, 127, 127 };
+    Color col{127, 127, 127};
     ClearBitmap(pBitmap, col);
 
     InitScene();
@@ -251,7 +250,7 @@ void main(int argc, char** args)
     auto end = std::chrono::high_resolution_clock::now();
     auto diff = end - start;
 
-    std::cout << "Time: " << std::chrono::duration <double, std::milli> (diff).count() << " ms" << std::endl;
+    std::cout << "Time: " << std::chrono::duration<double, std::milli>(diff).count() << " ms" << std::endl;
     WriteBitmap(pBitmap, "image.bmp");
     DestroyBitmap(pBitmap);
 

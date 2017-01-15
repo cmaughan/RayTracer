@@ -2,6 +2,7 @@
 #define NOMINMAX
 
 #include <windows.h>
+#include <windowsx.h>
 #include <algorithm>
 
 using namespace std;
@@ -15,11 +16,14 @@ using namespace Gdiplus;
 
 #include "sceneobjects.h"
 #include "camera.h"
+#include "manipulator.h"
 
 #include <thread>
 #include <chrono>
 
 #include "cmdparser\cmdparser.hpp"
+
+#include "glm/glm/gtc/random.hpp"
 
 int ImageWidth = 1024;
 int ImageHeight = 768;
@@ -32,6 +36,7 @@ std::shared_ptr<Bitmap> spBitmap;
 std::vector<glm::vec4> buffer;
 std::vector<std::shared_ptr<SceneObject>> sceneObjects;
 std::shared_ptr<Camera> pCamera;
+std::shared_ptr<Manipulator> pManipulator;
 
 float cameraAngle = 0.0f;
 float cameraDistance = 8.0f;
@@ -106,47 +111,49 @@ void InitScene()
 
     // Red ball
     Material mat;
-    mat.albedo = vec3(.7f, .1f, .1f);
-    mat.specular = vec3(.9f, .1f, .1f);
+    mat.albedo = glm::vec3(.7f, .1f, .1f);
+    mat.specular = glm::vec3(.9f, .1f, .1f);
     mat.reflectance = 0.5f;
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(0.0f, 2.0f, 0.f), 2.0f));
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, glm::vec3(0.0f, 2.0f, 0.f), 2.0f));
 
     // Purple ball
-    mat.albedo = vec3(0.7f, 0.0f, 0.7f);
-    mat.specular = vec3(0.9f, 0.9f, 0.8f);
+    mat.albedo = glm::vec3(0.7f, 0.0f, 0.7f);
+    mat.specular = glm::vec3(0.9f, 0.9f, 0.8f);
     mat.reflectance = 0.5f;
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-2.5f, 1.0f, 2.f), 1.0f));
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, glm::vec3(-2.5f, 1.0f, 2.f), 1.0f));
 
     // Blue ball
-    mat.albedo = vec3(0.0f, 0.3f, 1.0f);
-    mat.specular = vec3(0.0f, 0.0f, 1.0f);
+    mat.albedo = glm::vec3(0.0f, 0.3f, 1.0f);
+    mat.specular = glm::vec3(0.0f, 0.0f, 1.0f);
     mat.reflectance = 0.0f;
-    mat.emissive = vec3(0.0f, 0.0f, 0.0f);
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(0.0f, 0.5f, 3.f), 0.5f));
+    mat.emissive = glm::vec3(0.0f, 0.0f, 0.0f);
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, glm::vec3(0.0f, 0.5f, 3.f), 0.5f));
 
     // White ball
-    mat.albedo = vec3(1.0f, 1.0f, 1.0f);
-    mat.specular = vec3(0.0f, 0.0f, 0.0f);
+    mat.albedo = glm::vec3(1.0f, 1.0f, 1.0f);
+    mat.specular = glm::vec3(0.0f, 0.0f, 0.0f);
     mat.reflectance = .0f;
-    mat.emissive = vec3(0.0f, 0.8f, 0.8f);
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(2.8f, 0.8f, 2.0f), 0.8f));
+    mat.emissive = glm::vec3(0.0f, 0.8f, 0.8f);
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, glm::vec3(2.8f, 0.8f, 2.0f), 0.8f));
 
     // White light
-    mat.albedo = vec3(0.0f, 0.8f, 0.0f);
-    mat.specular = vec3(0.0f, 0.0f, 0.0f);
+    mat.albedo = glm::vec3(0.0f, 0.8f, 0.0f);
+    mat.specular = glm::vec3(0.0f, 0.0f, 0.0f);
     mat.reflectance = 0.0f;
-    mat.emissive = vec3(1.0f, 1.0f, 1.0f);
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, vec3(-10.8f, 6.4f, 10.0f), 0.4f));
+    mat.emissive = glm::vec3(1.0f, 1.0f, 1.0f);
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, glm::vec3(-10.8f, 6.4f, 10.0f), 0.4f));
 
-    sceneObjects.push_back(std::make_shared<TiledPlane>(vec3(0.0f, 0.0f, 0.0f), normalize(vec3(0.0f, 1.0f, 0.0f))));
+    sceneObjects.push_back(std::make_shared<TiledPlane>(glm::vec3(0.0f, 0.0f, 0.0f), normalize(glm::vec3(0.0f, 1.0f, 0.0f))));
 
     pCamera = std::make_shared<Camera>();
-    pCamera->SetFocalPoint(vec3(0.0f));
-    pCamera->SetPosition(vec3(0.0f, 5.0f, cameraDistance));
+    pCamera->SetFocalPoint(glm::vec3(0.0f));
+    pCamera->SetPosition(glm::vec3(0.0f, 5.0f, cameraDistance));
+
+    pManipulator = std::make_shared<Manipulator>(pCamera);
 
 }
 
-SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance)
+SceneObject* FindNearestObject(glm::vec3 rayorig, glm::vec3 raydir, float& nearestDistance)
 {
     SceneObject* nearestObject = nullptr;
     nearestDistance = std::numeric_limits<float>::max();
@@ -165,7 +172,7 @@ SceneObject* FindNearestObject(vec3 rayorig, vec3 raydir, float& nearestDistance
     return nearestObject;
 }
 
-vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
+glm::vec3 TraceRay(const glm::vec3& rayorig, const glm::vec3 &raydir, const int depth)
 {
     const SceneObject* nearestObject = nullptr;
     float distance;
@@ -173,21 +180,21 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 
     if (!nearestObject)
     {
-        return vec3{ 0.1f, 0.1f, 0.1f };
+        return glm::vec3{ 0.1f, 0.1f, 0.1f };
     }
-    vec3 pos = rayorig + (raydir * distance);
-    vec3 normal = nearestObject->GetSurfaceNormal(pos);
-    vec3 outputColor{ 0.0f, 0.0f, 0.0f };
+    glm::vec3 pos = rayorig + (raydir * distance);
+    glm::vec3 normal = nearestObject->GetSurfaceNormal(pos);
+    glm::vec3 outputColor{ 0.0f, 0.0f, 0.0f };
 
     const Material& material = nearestObject->GetMaterial(pos);
 
-    vec3 reflect = glm::normalize(glm::reflect(raydir, normal));
+    glm::vec3 reflect = glm::normalize(glm::reflect(raydir, normal));
 
     // If the object is transparent, get the reflection color
     if (depth < MAX_DEPTH && (material.reflectance > 0.0f))
     {
-        vec3 reflectColor(0.0f, 0.0f, 0.0f);
-        vec3 refractColor(0.0f, 0.0f, 0.0f);
+        glm::vec3 reflectColor(0.0f, 0.0f, 0.0f);
+        glm::vec3 refractColor(0.0f, 0.0f, 0.0f);
 
         reflectColor = TraceRay(pos + (reflect * 0.001f), reflect, depth + 1);
         outputColor = (reflectColor * material.reflectance);
@@ -195,7 +202,7 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
     // For every emitter, gather the light
     for (auto& emitterObj : sceneObjects)
     {
-        vec3 emitterDir = emitterObj->GetRayFrom(pos);
+        glm::vec3 emitterDir = emitterObj->GetRayFrom(pos);
 
         float bestDistance = std::numeric_limits<float>::max();
         SceneObject* pOccluder = nullptr;
@@ -212,7 +219,7 @@ vec3 TraceRay(const vec3& rayorig, const vec3 &raydir, const int depth)
 
                         // If we found our emitter, and the point we hit is not emissive, then ignore
                         pEmissiveMat = &occluder->GetMaterial(pos + (emitterDir * distance));
-                        if (pEmissiveMat->emissive == vec3(0.0f, 0.0f, 0.0f))
+                        if (pEmissiveMat->emissive == glm::vec3(0.0f, 0.0f, 0.0f))
                         {
                             pEmissiveMat = nullptr;
                         }
@@ -295,7 +302,7 @@ void DrawScene(int partitions, bool antialias)
             {
                 for (int x = 0; x < ImageWidth; x += 1)
                 {
-                    vec3 color{ 0.0f, 0.0f, 0.0f };
+                    glm::vec3 color{ 0.0f, 0.0f, 0.0f };
                     auto offset = sample + glm::vec2(x, y);
 
                     auto ray = pCamera->GetWorldRay(offset);
@@ -360,9 +367,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         {
             step = true;
         }
+        /*
         else if (wParam == 'r')
         {
-            pCamera->Orbit(1.0f);
+            //pCamera->Orbit(1.0f);
             currentSample = 0;
             step = true;
         }
@@ -372,6 +380,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
             currentSample = 0;
             step = true;
         }
+        */
         else if (wParam == 'w')
         {
             pCamera->Dolly(.5f);
@@ -397,6 +406,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         default:
             break;
         }
+    }
+    break;
+
+    case WM_MOUSEMOVE:
+    {
+        auto xPos = GET_X_LPARAM(lParam); 
+        auto yPos = GET_Y_LPARAM(lParam); 
+        if (pManipulator->MouseMove(glm::vec2(xPos, yPos)))
+        {
+            currentSample = 0;
+            step = true;
+        }
+    }
+    break;
+
+    case WM_LBUTTONDOWN:
+    {
+        auto xPos = GET_X_LPARAM(lParam); 
+        auto yPos = GET_Y_LPARAM(lParam); 
+        pManipulator->MouseDown(glm::vec2(xPos, yPos));
+    }
+    break;
+
+    case WM_LBUTTONUP:
+    {
+        auto xPos = GET_X_LPARAM(lParam); 
+        auto yPos = GET_Y_LPARAM(lParam); 
+        pManipulator->MouseUp(glm::vec2(xPos, yPos));
     }
     break;
 

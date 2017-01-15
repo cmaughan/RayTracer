@@ -1,18 +1,20 @@
 #pragma once
 
+#include "glm/glm/gtx/rotate_vector.hpp"
+
 // A simple camera
 class Camera
 {
 private:
-    vec3 position = vec3(0.0f);                          // Position of the camera in world space
-    vec3 focalPoint = vec3(0.0f);                        // Look at point
+    glm::vec3 position = glm::vec3(0.0f);                          // Position of the camera in world space
+    glm::vec3 focalPoint = glm::vec3(0.0f);                        // Look at point
 
     float filmWidth = 1.0f;                              // Width/height of the film
     float filmHeight = 1.0f;
 
-    vec3 viewDirection = vec3(0.0f, 0.0f, 1.0f);         // The direction the camera is looking in
-    vec3 right = vec3(1.0f, 0.0f, 0.0f);                 // The vector to the right
-    vec3 up = vec3(0.0f, 1.0f, 0.0f);                    // The vector up
+    glm::vec3 viewDirection = glm::vec3(0.0f, 0.0f, 1.0f);         // The direction the camera is looking in
+    glm::vec3 right = glm::vec3(1.0f, 0.0f, 0.0f);                 // The vector to the right
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);                    // The vector up
 
     float fieldOfView = 60.0f;                          // Field of view
     float halfAngle = 30.0f;                            // Half angle of the view frustum
@@ -28,17 +30,17 @@ public:
 
     }
 
-    const vec3& GetPosition() const
+    const glm::vec3& GetPosition() const
     {
         return position;
     }
 
-    void SetPosition(const vec3& pos)
+    void SetPosition(const glm::vec3& pos)
     {
         position = pos;
     }
 
-    void SetFocalPoint(const vec3& pos)
+    void SetFocalPoint(const glm::vec3& pos)
     {
         focalPoint = pos;
     }
@@ -59,10 +61,10 @@ public:
     }
 
     // Given a screen coordinate, return a ray leaving the camera and entering the world at that 'pixel'
-    vec3 GetWorldRay(const vec2& imageSample)
+    glm::vec3 GetWorldRay(const glm::vec2& imageSample)
     {
         // Could move some of this maths out of here for speed, but this isn't time critical
-        vec3 dir(viewDirection);
+        glm::vec3 dir(viewDirection);
         float x = ((imageSample.x * 2.0f) / filmWidth) - 1.0f;
         float y = ((imageSample.y * 2.0f) / filmHeight) - 1.0f;
 
@@ -75,16 +77,19 @@ public:
         return dir;
     }
 
-    void Orbit(float angle)
+    void Orbit(const glm::vec2& angle)
     {
-        UpdateRays();
+        //UpdateRays();
 
-        //xAngle = glm::acos(viewDirection, glm::vec3(1.0f, 0.0f, 0.0f));
-        //glm::vec3 pos;
-        //pos.x = glm::sin(glm::radians(cameraAngle)) * cameraDistance;
-        //pos.z = glm::cos(glm::radians(cameraAngle)) * cameraDistance;
-        //pos.y = 5.0f;
-        //pos = lookAt + pos;
+        glm::vec3 xRotate = glm::rotate(-viewDirection, glm::radians(angle.x), up);
+        xRotate = glm::normalize(xRotate);
+        //glm::vec3 yRotate = glm::rotate(-viewDirection, glm::radians(angle.y), right);
+
+        position = (xRotate * glm::length(focalPoint - position)) + focalPoint;
+        //position += (yRotate * glm::length(focalPoint - position)) + focalPoint;
+
+        viewDirection = -xRotate;
+        //UpdateRays();
     }
     
     void Dolly(float distance)
@@ -101,7 +106,7 @@ private:
         viewDirection = glm::normalize(viewDirection);
 
         // The vector to the right of the camera - assume the 'Up' Vector is vertically up
-        right = glm::cross(viewDirection, vec3(0.0f, 1.0, 0.0));
+        right = glm::cross(viewDirection, glm::vec3(0.0f, 1.0, 0.0));
 
         // The 'up' vector pointing above the camera
         // We recalculate it from the existing right and view direction.

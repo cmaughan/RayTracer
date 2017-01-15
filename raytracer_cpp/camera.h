@@ -3,19 +3,19 @@
 // A simple camera
 struct Camera
 {
-    vec3 position;          // Position of the camera in world space
-    vec3 viewDirection;     // The direction the camera is looking in
-    vec3 right;             // The vector to the right
-    vec3 up;                // The vector up
+    vec3 position;      // Position of the camera in world space
+    vec3 viewDirection; // The direction the camera is looking in
+    vec3 right;         // The vector to the right
+    vec3 up;            // The vector up
 
-    float aspectRatio;      // Ratio of x to y of the viewport
+    float aspectRatio; // Ratio of x to y of the viewport
 
-    float halfAngle;        // Half angle of the view frustum
+    float halfAngle; // Half angle of the view frustum
 
-    float imageWidth;       // Width/height of the view plane
+    float imageWidth; // Width/height of the view plane
     float imageHeight;
 
-    Camera(const vec3& cameraPosition, const vec3& dir, float fov, int width, unsigned int height)
+    Camera(const vec3 &cameraPosition, const vec3 &dir, float fov, int width, unsigned int height)
     {
         position = cameraPosition;
 
@@ -45,15 +45,15 @@ struct Camera
     }
 
     // Given a screen coordinate, return a ray leaving the camera and entering the world at that 'pixel'
-    vec3 GetWorldRay(const vec2& imageSample)
+    vec3 GetWorldRay(const vec2 &imageSample)
     {
         // Could move some of this maths out of here for speed, but this isn't time critical
         vec3 dir(viewDirection);
         float x = ((imageSample.x * 2.0f) / imageWidth) - 1.0f;
         float y = ((imageSample.y * 2.0f) / imageHeight) - 1.0f;
 
-        // Take the view direction and adjust it to point at the given sample, based on the 
-        // the frustum 
+        // Take the view direction and adjust it to point at the given sample, based on the
+        // the frustum
         dir += (right * (halfAngle * aspectRatio * x));
         dir -= (up * (halfAngle * y));
         dir = normalize(dir);
