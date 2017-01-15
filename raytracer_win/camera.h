@@ -79,17 +79,17 @@ public:
 
     void Orbit(const glm::vec2& angle)
     {
-        //UpdateRays();
+        UpdateRays();
+        glm::vec3 yUp(0.0f, 1.0f, 0.0f);
 
-        glm::vec3 xRotate = glm::rotate(-viewDirection, glm::radians(angle.x), up);
-        xRotate = glm::normalize(xRotate);
-        //glm::vec3 yRotate = glm::rotate(-viewDirection, glm::radians(angle.y), right);
+        glm::vec3 xRotate = glm::rotate(-viewDirection, glm::radians(-angle.x), yUp);
+        glm::vec3 yRotate = glm::rotate(xRotate, glm::radians(-angle.y), right);
 
-        position = (xRotate * glm::length(focalPoint - position)) + focalPoint;
+        position = (yRotate * glm::length(focalPoint - position)) + focalPoint;
         //position += (yRotate * glm::length(focalPoint - position)) + focalPoint;
 
-        viewDirection = -xRotate;
-        //UpdateRays();
+        //viewDirection = -yRotate;
+        UpdateRays();
     }
     
     void Dolly(float distance)
