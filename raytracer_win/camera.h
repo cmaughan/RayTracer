@@ -1,6 +1,33 @@
 #pragma once
 
 #include "glm/glm/gtx/rotate_vector.hpp"
+#include "glm/glm/gtc/quaternion.hpp"
+
+/** Build a unit quaternion representing the rotation
+ * from u to v. The input vectors need not be normalised. */
+glm::quat QuatFromVectors(glm::vec3 u, glm::vec3 v)
+{
+    float norm_u_norm_v = sqrt(dot(u, u) * dot(v, v));
+    float real_part = norm_u_norm_v + dot(u, v);
+    glm::vec3 w;
+
+    if (real_part < 1.e-6f * norm_u_norm_v)
+    {
+        /* If u and v are exactly opposite, rotate 180 degrees
+         * around an arbitrary orthogonal axis. Axis normalisation
+         * can happen later, when we normalise the quaternion. */
+        real_part = 0.0f;
+        w = abs(u.x) > abs(u.z) ? glm::vec3(-u.y, u.x, 0.f)
+            : glm::vec3(0.f, -u.z, u.y);
+    }
+    else
+    {
+        /* Otherwise, build quaternion the standard way. */
+        w = cross(u, v);
+    }
+
+    return glm::normalize(glm::quat(real_part, w.x, w.y, w.z));
+}
 
 // A simple camera
 class Camera
@@ -9,16 +36,18 @@ private:
     glm::vec3 position = glm::vec3(0.0f);                          // Position of the camera in world space
     glm::vec3 focalPoint = glm::vec3(0.0f);                        // Look at point
 
-    float filmWidth = 1.0f;                              // Width/height of the film
+    float filmWidth = 1.0f;                                         // Width/height of the film
     float filmHeight = 1.0f;
 
     glm::vec3 viewDirection = glm::vec3(0.0f, 0.0f, 1.0f);         // The direction the camera is looking in
     glm::vec3 right = glm::vec3(1.0f, 0.0f, 0.0f);                 // The vector to the right
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);                    // The vector up
 
-    float fieldOfView = 60.0f;                          // Field of view
-    float halfAngle = 30.0f;                            // Half angle of the view frustum
-    float aspectRatio = 1.0f;                           // Ratio of x to y of the viewport
+    float fieldOfView = 60.0f;                                      // Field of view
+    float halfAngle = 30.0f;                                        // Half angle of the view frustum
+    float aspectRatio = 1.0f;                                       // Ratio of x to y of the viewport
+
+    glm::quat orientation;                                          // A quaternion representing the camera rotation
 
 public:
     Camera()
@@ -35,14 +64,23 @@ public:
         return position;
     }
 
-    void SetPosition(const glm::vec3& pos)
+    void SetPositionAndFocalPoint(const glm::vec3& pos, const glm::vec3& point)
     {
+        // From
         position = pos;
-    }
 
-    void SetFocalPoint(const glm::vec3& pos)
-    {
-        focalPoint = pos;
+        // Focal
+        focalPoint = point;
+
+        // Work out direction
+        viewDirection = focalPoint - position;
+        viewDirection = glm::normalize(viewDirection);
+
+        // Get camera orientation relative to -z
+        orientation = QuatFromVectors(viewDirection, glm::vec3(0.0f, 0.0f, -1.0f));
+        orientation = glm::normalize(orientation);
+
+        UpdateRightUp();
     }
 
     void SetFilmSize(float width, float height)
@@ -50,14 +88,14 @@ public:
         filmWidth = width;
         filmHeight = height;
         aspectRatio = width / height;
+        
     }
 
     void PreRender()
     {
-        UpdateRays();
-
         // The half-width of the viewport, in world space
         halfAngle = float(tan(glm::radians(fieldOfView) / 2.0));
+        UpdateRightUp();
     }
 
     // Given a screen coordinate, return a ray leaving the camera and entering the world at that 'pixel'
@@ -77,45 +115,35 @@ public:
         return dir;
     }
 
-    void Orbit(const glm::vec2& angle)
-    {
-        UpdateRays();
-        glm::vec3 yUp(0.0f, 1.0f, 0.0f);
-
-        glm::vec3 xRotate = glm::rotate(-viewDirection, glm::radians(-angle.x), yUp);
-        glm::vec3 yRotate = glm::rotate(xRotate, glm::radians(-angle.y), right);
-
-        position = (yRotate * glm::length(focalPoint - position)) + focalPoint;
-        //position += (yRotate * glm::length(focalPoint - position)) + focalPoint;
-
-        //viewDirection = -yRotate;
-        UpdateRays();
-    }
-    
     void Dolly(float distance)
     {
-        UpdateRays();
         position += viewDirection * distance;
     }
 
-private:
-    void UpdateRays()
+    // Orbit around the focal point, keeping y 'Up'
+    void Orbit(const glm::vec2& angle)
     {
-        // Work out direction
-        viewDirection = focalPoint - position;
-        viewDirection = glm::normalize(viewDirection);
+        // 2 rotations, about right and world up, for the camera
+        glm::quat rotY = glm::angleAxis(glm::radians(angle.y), glm::vec3(right));
+        glm::quat rotX = glm::angleAxis(glm::radians(angle.x), glm::vec3(0.0f, 1.0f, 0.0f));
 
-        // The vector to the right of the camera - assume the 'Up' Vector is vertically up
-        right = glm::cross(viewDirection, glm::vec3(0.0f, 1.0, 0.0));
+        // Concatentation of the current rotations with the new one
+        orientation = orientation * rotY * rotX;
+        orientation = glm::normalize(orientation);
+     
+        // Recalculate position from the new view direction, relative to the focal point
+        float distance = glm::length(focalPoint - position);
+        viewDirection = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f) * orientation);
+        position = focalPoint - (viewDirection * distance);
 
-        // The 'up' vector pointing above the camera
-        // We recalculate it from the existing right and view direction.
-        // Imaging a line pointing up from your head, based on how far forward you are leaning
-        up = glm::cross(right, viewDirection);
+        UpdateRightUp();
+    }
 
-        // Ensure our vectors are normalized
-        up = normalize(up);
-        right = normalize(right);
-        viewDirection = normalize(viewDirection);
+private:
+    void UpdateRightUp()
+    {
+        // Right and up vectors updated based on the quaternion orientation
+        right = glm::normalize(glm::vec3(1.0f, 0.0f, 0.0f) * orientation);
+        up = glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f) * orientation);
     }
 };

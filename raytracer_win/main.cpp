@@ -146,11 +146,9 @@ void InitScene()
     sceneObjects.push_back(std::make_shared<TiledPlane>(glm::vec3(0.0f, 0.0f, 0.0f), normalize(glm::vec3(0.0f, 1.0f, 0.0f))));
 
     pCamera = std::make_shared<Camera>();
-    pCamera->SetFocalPoint(glm::vec3(0.0f));
-    pCamera->SetPosition(glm::vec3(0.0f, 5.0f, cameraDistance));
+    pCamera->SetPositionAndFocalPoint(glm::vec3(0.0f, 5.0f, cameraDistance), glm::vec3(0.0f));
 
     pManipulator = std::make_shared<Manipulator>(pCamera);
-
 }
 
 SceneObject* FindNearestObject(glm::vec3 rayorig, glm::vec3 raydir, float& nearestDistance)
