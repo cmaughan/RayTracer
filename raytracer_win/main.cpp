@@ -424,6 +424,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         auto xPos = GET_X_LPARAM(lParam); 
         auto yPos = GET_Y_LPARAM(lParam); 
         pManipulator->MouseDown(glm::vec2(xPos, yPos));
+        SetCapture(hWnd);
     }
     break;
 
@@ -432,6 +433,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         auto xPos = GET_X_LPARAM(lParam); 
         auto yPos = GET_Y_LPARAM(lParam); 
         pManipulator->MouseUp(glm::vec2(xPos, yPos));
+        ReleaseCapture();
     }
     break;
 
