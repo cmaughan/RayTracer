@@ -50,22 +50,24 @@ void CopyTargetToBitmap()
 
         BitmapData writeData;
         Rect lockRect(0, 0, ImageWidth, ImageHeight);
-        spBitmap->LockBits(&lockRect, ImageLockModeWrite, PixelFormat32bppARGB, &writeData);
-
-        for (int y = 0; y < int(writeData.Height); y++)
+        if (spBitmap->LockBits(&lockRect, ImageLockModeWrite, PixelFormat32bppARGB, &writeData) == 0)
         {
-            for (auto x = 0; x < int(writeData.Width); x++)
+
+            for (int y = 0; y < int(writeData.Height); y++)
             {
-                glm::u8vec4* pTarget = (glm::u8vec4*)((uint8_t*)writeData.Scan0 + (y * writeData.Stride) + (x * 4));
-                glm::vec4 source = buffer[(y * ImageWidth) + x];
-                source = glm::clamp(source, glm::vec4(0.0f), glm::vec4(1.0f));
+                for (auto x = 0; x < int(writeData.Width); x++)
+                {
+                    glm::u8vec4* pTarget = (glm::u8vec4*)((uint8_t*)writeData.Scan0 + (y * writeData.Stride) + (x * 4));
+                    glm::vec4 source = buffer[(y * ImageWidth) + x];
+                    source = glm::clamp(source, glm::vec4(0.0f), glm::vec4(1.0f));
 
-                source = glm::u8vec4(source * 255.0f);
-                *pTarget = source;
+                    source = glm::u8vec4(source * 255.0f);
+                    *pTarget = source;
+                }
             }
-        }
 
-        spBitmap->UnlockBits(&writeData);
+            spBitmap->UnlockBits(&writeData);
+        }
     }
 }
 
@@ -282,7 +284,6 @@ void DrawScene(int partitions, bool antialias)
         return;
     }
 
-    pCamera->PreRender();
 
     srand(currentSample);
 
@@ -365,27 +366,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         {
             step = true;
         }
-        /*
-        else if (wParam == 'r')
-        {
-            //pCamera->Orbit(1.0f);
-            currentSample = 0;
-            step = true;
-        }
-        else if (wParam == 'f')
-        {
-            pCamera->Orbit(-1.0f);
-            currentSample = 0;
-            step = true;
-        }
-        */
-        else if (wParam == 'w')
+    }
+    break;
+
+    case WM_KEYDOWN:
+    {
+        if (wParam == 'W')
         {
             pCamera->Dolly(.5f);
             currentSample = 0;
-            step = true;
+            step = true; 
         }
-        else if (wParam == 's')
+        else if (wParam == 'S')
         {
             pCamera->Dolly(-.5f);
             currentSample = 0;
@@ -409,8 +401,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
 
     case WM_MOUSEMOVE:
     {
-        auto xPos = GET_X_LPARAM(lParam); 
-        auto yPos = GET_Y_LPARAM(lParam); 
+        auto xPos = GET_X_LPARAM(lParam);
+        auto yPos = GET_Y_LPARAM(lParam);
         if (pManipulator->MouseMove(glm::vec2(xPos, yPos)))
         {
             currentSample = 0;
@@ -421,8 +413,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
 
     case WM_LBUTTONDOWN:
     {
-        auto xPos = GET_X_LPARAM(lParam); 
-        auto yPos = GET_Y_LPARAM(lParam); 
+        auto xPos = GET_X_LPARAM(lParam);
+        auto yPos = GET_Y_LPARAM(lParam);
         pManipulator->MouseDown(glm::vec2(xPos, yPos));
         SetCapture(hWnd);
     }
@@ -430,8 +422,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
 
     case WM_LBUTTONUP:
     {
-        auto xPos = GET_X_LPARAM(lParam); 
-        auto yPos = GET_Y_LPARAM(lParam); 
+        auto xPos = GET_X_LPARAM(lParam);
+        auto yPos = GET_Y_LPARAM(lParam);
         pManipulator->MouseUp(glm::vec2(xPos, yPos));
         ReleaseCapture();
     }
@@ -526,6 +518,12 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     msg.message = 0;
     while (WM_QUIT != msg.message)
     {
+        bool changed = pCamera->PreRender();
+        if (changed)
+        {
+            currentSample = 0;
+        }
+
         if (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE))
         {
             //Translate message

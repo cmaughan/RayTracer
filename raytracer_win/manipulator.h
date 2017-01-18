@@ -35,7 +35,14 @@ public:
         currentPos = pos;
         if (mouseDown)
         {
-            spCamera->Orbit(currentPos - startPos);
+            if (GetAsyncKeyState(VK_LCONTROL) & 0x8000)
+            {
+                spCamera->Dolly((startPos.y - currentPos.y) / 4.0f);
+            }
+            else
+            {
+                spCamera->Orbit((currentPos - startPos) / 2.0f);
+            }
             startPos = pos;
         }
         return true;
