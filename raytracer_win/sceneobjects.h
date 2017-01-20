@@ -95,19 +95,18 @@ struct TiledPlane : Plane
     {
         normal = n;
         origin = o;
-        blackMat.reflectance = 0.0f;
+        blackMat.reflectance = 0.2f;
         blackMat.specular = glm::vec3(1.0f, 1.0f, 1.0f);
         blackMat.albedo = glm::vec3(0.0f, 0.0f, 0.0f);
 
-        whiteMat.reflectance = 0.0f;
+        whiteMat.reflectance = 0.3f;
         whiteMat.specular = glm::vec3(1.0f, 1.0f, 1.0f);
         whiteMat.albedo = glm::vec3(1.0f, 1.0f, 1.0f);
     }
 
     virtual const Material& GetMaterial(const glm::vec3& pos) const override
     {
-        bool white = ((int(floor(pos.x) + /*floor(pos.y) +*/ floor(pos.z)) & 1) == 0);
-
+        bool white = ((int(floor(pos.x / 4) + /*floor(pos.y) +*/ floor(pos.z / 4)) & 1) == 0); 
         if (white)
         {
             return whiteMat;

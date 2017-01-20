@@ -30,7 +30,7 @@ int ImageHeight = 768;
 const float FieldOfView = 60.0f;
 HWND hWnd;
 
-#define MAX_DEPTH 5
+#define MAX_DEPTH 3
 
 std::shared_ptr<Bitmap> spBitmap;
 std::vector<glm::vec4> buffer;
@@ -143,12 +143,12 @@ void InitScene()
     mat.specular = glm::vec3(0.0f, 0.0f, 0.0f);
     mat.reflectance = 0.0f;
     mat.emissive = glm::vec3(1.0f, 1.0f, 1.0f);
-    sceneObjects.push_back(std::make_shared<Sphere>(mat, glm::vec3(-10.8f, 6.4f, 10.0f), 0.4f));
+    sceneObjects.push_back(std::make_shared<Sphere>(mat, glm::vec3(-0.8f, 10.4f, 8.0f), 1.0f));
 
     sceneObjects.push_back(std::make_shared<TiledPlane>(glm::vec3(0.0f, 0.0f, 0.0f), normalize(glm::vec3(0.0f, 1.0f, 0.0f))));
 
     pCamera = std::make_shared<Camera>();
-    pCamera->SetPositionAndFocalPoint(glm::vec3(0.0f, 5.0f, cameraDistance), glm::vec3(0.0f));
+    pCamera->SetPositionAndFocalPoint(glm::vec3(0.0f, 5.0f, cameraDistance), glm::vec3(0.0f, 1.0f, 0.0f));
 
     pManipulator = std::make_shared<Manipulator>(pCamera);
 }
@@ -180,7 +180,7 @@ glm::vec3 TraceRay(const glm::vec3& rayorig, const glm::vec3 &raydir, const int 
 
     if (!nearestObject)
     {
-        return glm::vec3{ 0.1f, 0.1f, 0.1f };
+        return glm::vec3{ 0.2f, 0.2f, 0.2f };
     }
     glm::vec3 pos = rayorig + (raydir * distance);
     glm::vec3 normal = nearestObject->GetSurfaceNormal(pos);
@@ -284,8 +284,8 @@ void DrawScene(int partitions, bool antialias)
         return;
     }
 
-
-    srand(currentSample);
+    auto t = time(NULL);
+    std::srand((unsigned int)t);
 
     std::vector<std::shared_ptr<std::thread>> threads;
 
@@ -301,11 +301,12 @@ void DrawScene(int partitions, bool antialias)
             {
                 for (int x = 0; x < ImageWidth; x += 1)
                 {
+                    srand(time(0));
                     glm::vec3 color{ 0.0f, 0.0f, 0.0f };
-                    auto offset = sample + glm::vec2(x, y);
+                    auto offset = /*sample + */glm::vec2(x, y);
 
                     auto ray = pCamera->GetWorldRay(offset);
-                    color += TraceRay(pCamera->GetPosition(), ray, 0);
+                    color += TraceRay(ray.position, ray.direction, 0);
 
                     auto index = (y * ImageWidth) + x;
                     auto& bufferVal = buffer[index];
@@ -499,10 +500,12 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
     ShowWindow(hWnd, iCmdShow);
     UpdateWindow(hWnd);
 
+    /*
 #ifdef _DEBUG
     pause = true;
     step = true;
 #endif
+*/
     InitScene();
 
     cli::Parser parser(__argc, __argv);

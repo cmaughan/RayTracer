@@ -2,6 +2,7 @@
 
 #include "glm/glm/gtx/rotate_vector.hpp"
 #include "glm/glm/gtc/quaternion.hpp"
+#include "glm/glm/gtc/random.hpp"
 #include <string>
 
 /** Build a unit quaternion representing the rotation
@@ -29,6 +30,12 @@ glm::quat QuatFromVectors(glm::vec3 u, glm::vec3 v)
 
     return glm::normalize(glm::quat(real_part, w.x, w.y, w.z));
 }
+
+struct Ray
+{
+    glm::vec3 position;
+    glm::vec3 direction;
+};
 
 // A simple camera
 class Camera
@@ -93,7 +100,7 @@ public:
         filmWidth = width;
         filmHeight = height;
         aspectRatio = width / height;
-        
+
     }
 
     bool PreRender()
@@ -137,10 +144,15 @@ public:
     }
 
     // Given a screen coordinate, return a ray leaving the camera and entering the world at that 'pixel'
-    glm::vec3 GetWorldRay(const glm::vec2& imageSample)
+    Ray GetWorldRay(const glm::vec2& imageSample)
     {
         // Could move some of this maths out of here for speed, but this isn't time critical
-        glm::vec3 dir(viewDirection);
+        //glm::vec3 dir(viewDirection);
+       
+
+        auto lensRand = glm::circularRand(0.14f);
+
+        auto dir = viewDirection;
         float x = ((imageSample.x * 2.0f) / filmWidth) - 1.0f;
         float y = ((imageSample.y * 2.0f) / filmHeight) - 1.0f;
 
@@ -148,9 +160,16 @@ public:
         // the frustum 
         dir += (right * (halfAngle * aspectRatio * x));
         dir -= (up * (halfAngle * y));
-        dir = normalize(dir);
+        //dir = normalize(dir);
+        float ft = (glm::length(focalPoint - position) - 1.0f) / glm::length(dir);
+        glm::vec3 focasPoint = position + dir * ft;
 
-        return dir;
+        glm::vec3 lensPoint = position;
+        lensPoint += (right * lensRand.x);
+        lensPoint += (up * lensRand.y);
+        dir = glm::normalize(focasPoint - lensPoint);
+
+        return Ray{ lensPoint, dir };
     }
 
     void Dolly(float distance)
@@ -203,7 +222,7 @@ public:
         // Concatentation of the current rotations with the new one
         orientation = orientation * rotY * rotX;
         orientation = glm::normalize(orientation);
-     
+
         // Recalculate position from the new view direction, relative to the focal point
         float distance = glm::length(focalPoint - position);
         viewDirection = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f) * orientation);
